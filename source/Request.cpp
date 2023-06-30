@@ -1,5 +1,6 @@
 #include "Request.h"
 #include "picohttpparser.h"
+#include "rapidjson/document.h"
 #include <iostream>
 #include <string>
 #include <string.h>
@@ -51,10 +52,5 @@ Request::Request(char* request_string, size_t request_len)
 	size_t body_len = request_len - pret;
 	char* body_string = request_string + pret;
 
-	this->body = cJSON_ParseWithLength(body_string, body_len);
-}
-
-Request::~Request()
-{
-	cJSON_Delete(this->body);
+	this->body.Parse(body_string, body_len);
 }

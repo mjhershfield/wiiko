@@ -83,3 +83,8 @@ void PlayerList::set_quote(uint32_t id, std::string quote)
 {
     this->players.at(id).victory_quote = quote;
 }
+
+size_t PlayerList::num_players()
+{
+    return this->players.size();
+}

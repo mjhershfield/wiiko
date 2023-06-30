@@ -9,7 +9,6 @@
 #include <network.h>
 #include <wiiuse/wpad.h>
 #include <ogc/system.h>
-#include <ogc/lwp_watchdog.h>
 #include <vector>
 #include "Game.h"
 #include "Server.h"
@@ -54,10 +53,6 @@ int main(int argc, char **argv)
 		std::cout << "network configuration failed!" << std::endl;
 	}
 
-	uint64_t prev_time = 0;
-	uint64_t current_time;
-	settime(0);
-
 	while (1)
 	{
 
@@ -71,19 +66,11 @@ int main(int argc, char **argv)
 			exit(0);
 		}
 
-		// current_time = gettime();
-		// if (diff_msec(prev_time, current_time) > 1000)
-		// {
-		// 	prev_time = current_time;
-		// 	std::cout << "Player List:" << std::endl;
-		// 	while(LWP_MutexLock(game.mutex));
-		// 	for (const std::string* username : game.players.get_player_list())
-		// 	{
-		// 		std::cout << *username << std::endl;
-		// 	}
-		// 	LWP_MutexUnlock(game.mutex);
-		// 	std::cout << std::endl << std::endl;
-		// }
+		while(LWP_MutexLock(game.mutex));
+		// TODO: Be able to get time left on graphics thread
+		game.check_next_state_timeout();
+		LWP_MutexUnlock(game.mutex);
+
 	}
 
 	return 0;

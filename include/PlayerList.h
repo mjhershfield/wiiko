@@ -52,4 +52,5 @@ public:
     ProfilePicture get_pfp(uint32_t id);
     void set_pfp(uint32_t id, ProfilePicture pfp);
     void set_quote(uint32_t id, std::string quote);
+    size_t num_players();
 };
