@@ -9,7 +9,10 @@
 #include <network.h>
 #include <wiiuse/wpad.h>
 #include <ogc/system.h>
+#include <ogc/lwp_watchdog.h>
 #include <vector>
+#include <fat.h>
+#include <dirent.h>
 #include "Game.h"
 #include "Server.h"
 
@@ -25,33 +28,76 @@ int main(int argc, char **argv)
 {
 	s32 ret;
 
+	settime(0);
+
+	// TODO: SEED RNG WITH SOMETHING ACTUALLY RANDOM LIKE gettime(). SYS_Time returns 0.
 	srand(SYS_Time());
 
-	char localip[16] = {0};
-	char gateway[16] = {0};
-	char netmask[16] = {0};
-
 	xfb = initialize_gfx();
+
+	std::cout << "Initializing filesystem" << std::endl;
+	if (!(ret = fatInitDefault()))
+	{
+		std::cout << "error initializing filesystem: " << ret << std::endl;
+		while (1);
+	}
+
+	std::cout << "Clearing temp folder" << std::endl;
+	DIR* tmp_dir = opendir("sd://data/wiiko/tmp/");
+	if (tmp_dir == NULL)
+	{
+		std::cout << "could not open tmp dir" << std::endl;
+		while(1);
+	}
+
+	while (1)
+	{
+		dirent* tmp_ent = readdir(tmp_dir);
+		if (tmp_ent == NULL) break;
+
+		if(strcmp(".", tmp_ent->d_name) != 0 && strcmp("..", tmp_ent->d_name) != 0)
+		{
+			char pathbuf[50];
+			sprintf(pathbuf, "sd://data/wiiko/tmp/%s", tmp_ent->d_name);
+			if (tmp_ent->d_type == DT_REG)
+			{
+				if (!remove(pathbuf))
+					printf("Deleted %s\n", pathbuf);
+				else
+					printf("Failed to delete %s\n", pathbuf);
+			}
+			else if (tmp_ent->d_type == DT_DIR)
+			{
+				printf("HOMIE IS A DIRECTORY ^^\n");
+			}
+		}
+	}
+
+	closedir(tmp_dir);
+	
+
 
 	std::cout << "Configuring network ..." << std::endl;
 
 	// Configure the network interface
-	ret = if_config(localip, netmask, gateway, TRUE, 20);
-	if (ret >= 0)
-	{
-		std::cout << "network configured, ip: " << localip << std::endl;
+	ret = -1;
+	while (ret < 0) {
+        net_deinit();
+        while ((ret = net_init()) == -EAGAIN);
+        if (ret < 0) printf("net_init() failed: [%i] %s, retrying...\n", ret, strerror(-ret));
+	}
 
-		LWP_CreateThread(&httd_handle, /* thread handle */
-						 Server::server_entrypoint,		   /* code */
-						 (void*) &game,	   /* arg pointer for thread */
-						 NULL,		   /* stack base */
-						 16 * 1024,	   /* stack size */
-						 50 /* thread priority */);
-	}
-	else
-	{
-		std::cout << "network configuration failed!" << std::endl;
-	}
+	in_addr localip;
+	localip.s_addr = net_gethostip();
+	
+	std::cout << "network configured, ip: " << inet_ntoa(localip) << std::endl;
+
+	LWP_CreateThread(&httd_handle, /* thread handle */
+						Server::server_entrypoint,		   /* code */
+						(void*) &game,	   /* arg pointer for thread */
+						NULL,		   /* stack base */
+						128 * 1024,	   /* stack size */
+						80 /* thread priority */);
 
 	while (1)
 	{
@@ -66,10 +112,12 @@ int main(int argc, char **argv)
 			exit(0);
 		}
 
-		while(LWP_MutexLock(game.mutex));
-		// TODO: Be able to get time left on graphics thread
-		game.check_next_state_timeout();
-		LWP_MutexUnlock(game.mutex);
+		if(LWP_MutexTryLock(game.mutex))
+		{
+			// TODO: Be able to get time left on graphics thread
+			game.check_next_state_timeout();
+			LWP_MutexUnlock(game.mutex);
+		}
 
 	}
 

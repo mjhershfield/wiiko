@@ -1,8 +1,8 @@
 # Current Plan
 
 - `GET /` serves single-page app
-- From there, clients `POST /join` with a username and are assigned a UUID
-    - The UUID is stored in local storage and is used to authenticate the user for future requests
+- From there, clients `POST /join` with a username and are assigned a id
+    - The id is stored in local storage and is used to authenticate the user for future requests
 - Clients continuously poll `GET /state` to get the gamestate and show the correct screen
 - Clients poll `GET /[gamestate_goes_here]` at the start of every state change.
     - /join
@@ -14,8 +14,7 @@
 
           // POST /join response
           {
-            "uuid":"XXXX",
-            "admin": true
+            "id":"XXXX",
           }
           ```
     - /lobby
@@ -23,14 +22,13 @@
           // GET /lobby response
           {
             "admin": true,
-            "taken_pfps": [0, 1, 5, 8],
-            "timeout": 5
           }
 
           // POST /lobby request
           {
-            "uuid":"XXXX",
+            "id":"XXXX",
             "pfp":10,
+            (or)
             "quote":"quote goes here"
           }
           ```
@@ -41,25 +39,25 @@
           {
             "round": 1
             "timeout": 90
+            "submitted": false
           }
 
           // POST /draw request
           {
-            "uuid":"XXXX",
-            "image": "some kind of raw image data here",
+            "id":"XXXX",
+            "image": "terrible jpeg data url goes here",
           }
           ```
     - /write
         - ```js
           // GET /write response
           {
-            "round": 1
             "timeout": 90
           }
 
           // POST /write request
           {
-            "uuid":"XXXX",
+            "id":"XXXX",
             "slogan": "words go here"
           }
           ```
@@ -68,84 +66,52 @@
           // GET /shirt response
           {
             "round": 1
-            "images": ["image data", "image data", "image data"],
-            "image_indices": [7, 29, 3],
-            "slogans": [text, text, text],
-            "slogan_indices": [32, 8, 21],
+            "images": ["image path", "image path", "image path"],
+            "slogans": ["text", "text", "text"],
             "timeout": 90
           }
 
           // POST /shirt request
           {
-            "uuid":"XXXX",
-            "image": 0,
-            "slogan": 2,
-            "round": 1
+            "id":"XXXX",
+            "image": "image path",
+            "slogan": "text",
           }
           ```
     - /battle
         - ```js
             // GET /battle response
             {
-            "round": 1
             "timeout": 90
             "slogans": ["shirt 0", "shirt 1"]
             }
 
             // POST /battle request
             {
-            "uuid":"XXXX",
+            "id":"XXXX",
             "vote": 0,
-            "round": 1
             }
             ```
 
 
-- There will be three threads: game state, graphics, network
-    - Game state is encapsulated in list of users, images, slogans, shirts
-        - ```c
-            enum gamestate {
-                LOBBY
-                STARTING
-                DRAW
-                WAIT_AFTER_DRAW
-                SLOGANS
-                WAIT_AFTER_SLOGANS
-                SHIRT
-                WAIT_AFTER_SHIRT
-                BATTLE
-            }
+- There will be two threads: graphics and network
+  - Game state will be shared between the two threads in an object that implements the gameplay state machine.
 
-            #define MAX_PLAYERS 8
-            #define MAX_IMAGES MAX_PLAYERS * 3
-            #define MAX_SLOGANS MAX_PLAYERS * 8
+Routing
+- Any of the API routes that respond to JSON are checked for explicitly
+- GET / returns index.html
+- Any other request is attempted to be found on the filesystem under data/wiiko/web/ or temp/wiiko
+- TODO: encode id for get requests as a query parameter? as an Authentication: Bearer Token header?
 
-            struct game_data {
-                gamestate state
-                player_t players[MAX_PLAYERS];
-                image_t images[MAX_IMAGES];
-                slogan_t slogans[MAX_PLAYERS];
-            }
 
-            struct player {
-                uint32_t uuid;
-                char* username;
-                char* victory_quote;
-                uint8_t pfp;
-                bool admin;
-            }
-
-            struct image {
-                uint32_t creator_uuid;
-                char* image;
-            }
-
-            struct slogan {
-                uint32_t creator_uuid;
-                char* image;
-            }
-        ```
-
+Files
+- data/wiiko/web/ will store the sveltekit website. Ideally this would get compacted into one site but idk. Maybe if we can translate the dynamic imports to an older form of Javascript?
+- data/wiiko/settings.json will hold the game settings and default round settings.
+- the temp/wiiko folder will be wiped clean when every new game starts.
+- temp/wiiko/images will hold user-submitted images. Each image will be stored as `userid/NUM.jpg`
+- temp/wiiko/gamestate.json stores current gamestate so that it can be restored at a later time?
+- Do we actually want a temp folder though? All of this could just be stored in memory if we don't care that it persists. It depends on how fast the filesystem is, I guess
+  - The SD card may be more scalable and allow larger image sizes since we don't have to worry about being able to fit 24+ images in RAM. Either way we'll have to do static serving from there.
 
 
 ## Miis for pfps
@@ -170,3 +136,44 @@
 - [Dragon](https://www.miicharacters.com/wii.php?mii=1430)
 - [Upside Down](https://www.miicharacters.com/wii.php?mii=50)
 - [Butterfly](https://www.miicharacters.com/wii.php?mii=1270)
+
+
+## HTTP Request
+```
+GETINFO /state HTTP/1.1
+Host: localhost
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Referer: http://localhost:5173/
+Content-Type: text/plain;charset=UTF-8
+Content-Length: 17
+Origin: http://localhost:5173
+DNT: 1
+Connection: keep-alive
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-site
+Pragma: no-cache
+Cache-Control: no-cache
+```
+```
+POST /draw HTTP/1.1
+Host: localhost
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Referer: http://localhost:5173/
+Content-Type: image/jpeg
+Content-Length: 4088
+Origin: http://localhost:5173
+DNT: 1
+Connection: keep-alive
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-site
+Pragma: no-cache
+Cache-Control: no-cache
+```

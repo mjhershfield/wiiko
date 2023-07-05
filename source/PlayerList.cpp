@@ -79,6 +79,7 @@ PlayerList::ProfilePicture PlayerList::get_pfp(uint32_t id)
     return this->players.at(id).pfp;
 }
 
+// TODO: put a limit on how large player quotes can be.
 void PlayerList::set_quote(uint32_t id, std::string quote)
 {
     this->players.at(id).victory_quote = quote;

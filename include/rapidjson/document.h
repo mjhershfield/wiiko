@@ -2482,7 +2482,7 @@ private:
 };
 
 //! GenericValue with UTF8 encoding
-typedef GenericValue<UTF8<> > Value;
+typedef GenericValue<UTF8<>, CrtAllocator> Value;
 
 ///////////////////////////////////////////////////////////////////////////////
 // GenericDocument 
@@ -2886,7 +2886,7 @@ private:
 };
 
 //! GenericDocument with UTF8 encoding
-typedef GenericDocument<UTF8<> > Document;
+typedef GenericDocument<UTF8<>, CrtAllocator> Document;
 
 
 //! Helper class for accessing Value of array type.
