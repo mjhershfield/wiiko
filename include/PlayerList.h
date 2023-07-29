@@ -31,7 +31,6 @@ public:
             NUM_PFPS
         };
 
-private:
     struct Player 
     {
         std::string username;
@@ -42,9 +41,11 @@ private:
         Player(std::string username, ProfilePicture pfp);
     };
 
+private:
     std::map<uint32_t, Player> players;
+
 public:
-    std::vector<const std::string*> get_player_list();
+    const std::map<uint32_t, Player>& get_player_list();
     uint32_t add_player(std::string username);
     bool is_player(uint32_t id);
     bool is_admin(uint32_t id);

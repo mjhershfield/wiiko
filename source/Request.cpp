@@ -67,12 +67,12 @@ Request::Request(char* request_string, size_t request_len)
 		this->static_file_path = NULL;
 	}
 	
-	printf("Path length: %d\n", path_len);
-	printf("Path: %s\n", full_path);
-	printf("Static file path length: %d\n", static_path_len);
-	printf("Static file path: %s\n", static_file_path);
-	printf("Query length: %d\n", query_len);
-	printf("Queries: %s\n", queries);
+	// printf("Path length: %d\n", path_len);
+	// printf("Path: %s\n", full_path);
+	// printf("Static file path length: %d\n", static_path_len);
+	// printf("Static file path: %s\n", static_file_path);
+	// printf("Query length: %d\n", query_len);
+	// printf("Queries: %s\n", queries);
 
 	#define SET_PATH_IF_MATCHES(S, E) if (str_cmp_const_check_size(full_path, path_len, S))\
 	{\

@@ -81,7 +81,9 @@ namespace
 		{
 			if (req.body_type == Json && req.json_body.HasParseError())
 				throw std::runtime_error("malformed request json");
+			std::cout << "Waiting for mutex lock" << std::endl;
 			while(LWP_MutexLock(game.mutex));
+			std::cout << "Got mutex lock" << std::endl;
 			switch (req.path)
 			{
 			case Root:
@@ -121,8 +123,10 @@ namespace
 			resp_body.AddMember("reason", StringRef(e.what()), resp_body.GetAllocator());
 		}
 
+		std::cout << "Unlocking Mutex" << std::endl;
 		LWP_MutexUnlock(game.mutex);
 		// Don't send JSON response for index.html, 404
+		std::cout << "Sending JSON response (if needed)" << std::endl;
 		if (req.path != Root && req.path != UnsupportedPath && req.path != Image)
 			send_json_response(client_socket, resp_body);
 	}
@@ -131,10 +135,10 @@ namespace
 	{
 		char buf[1024];
 
-		FILE* index_html_file = fopen("sd://data/wiiko/index.html.gz", "rb");
+		FILE* index_html_file = fopen("sd://apps/wiiko/index.html.gz", "rb");
 		if (index_html_file == NULL)
 		{
-			std::cout << "could not find sd://data/wiiko/index.html.gz" << std::endl;
+			std::cout << "could not find sd://apps/wiiko/index.html.gz" << std::endl;
 			send_404(client_socket);
 			return;
 		}
@@ -267,7 +271,6 @@ namespace
 	}
 
 	// TODO: Implement write
-
 	void write_get_handler(Request& req, Game& game, Document& resp_body)
 	{
 		if (game.get_current_state() != Game::GameState::Write)
@@ -307,7 +310,7 @@ namespace
 		//TODO: Validate that path only includes [hex digits].jpg
 		//TODO: crashes if tmp/ doesn't exist?
 
-		sprintf(buf, "sd://data/wiiko/tmp/%s", req.static_file_path);
+		sprintf(buf, "sd://apps/wiiko/tmp/%s", req.static_file_path);
 
 		FILE* image_file = fopen(buf, "rb");
 		if (image_file == NULL)
@@ -368,33 +371,40 @@ namespace
 
 	void* server_entrypoint(void* game_ptr)
 	{
-		int32_t sock, client_socket;
-		int32_t ret;
-		uint32_t clientlen;
-		sockaddr_in client;
-		sockaddr_in server;
-		char buf[1024 * 32 + 1];
-		size_t buflen;
+		// int32_t sock, client_socket;
+		// int32_t ret;
+		// uint32_t clientlen;
+		// sockaddr_in client;
+		// sockaddr_in server;
+		// char buf[1024 * 32 + 1];
+		// size_t buflen;
+
+		#define MAX_CLIENTS 16
+
+		// Server code mostly ripped off of https://saltyfish123.github.io/Socket_IO_Multiplexing/
+
+		int listenfd, connfd, i, maxi, nready, timeout = -1, ret, on = 1;
+		struct sockaddr_in servaddr, cliaddr;
+		socklen_t clilen;
+		pollsd clients[MAX_CLIENTS];
+		char buf[32 * 1024 + 1];
+		size_t n;
 
 		Game& game = *((Game*) game_ptr);
 
-		clientlen = sizeof(client);
+		listenfd = net_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 
-		sock = net_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-
-		if (sock == INVALID_SOCKET)
+		if (listenfd == INVALID_SOCKET)
 		{
-			std::cout << "Cannot create a socket!" << std::endl;
+			std::cout << "Cannot create a socket for listening!" << std::endl;
 			return NULL;
 		}
 
-		memset(&server, 0, sizeof(server));
-		memset(&client, 0, sizeof(client));
-
-		server.sin_family = AF_INET;
-		server.sin_port = htons(80);
-		server.sin_addr.s_addr = INADDR_ANY;
-		ret = net_bind(sock, (sockaddr*)&server, sizeof(server));
+		memset(&servaddr, 0, sizeof(servaddr));
+		servaddr.sin_family = AF_INET;
+		servaddr.sin_port = htons(80);
+		servaddr.sin_addr.s_addr = INADDR_ANY;
+		ret = net_bind(listenfd, (sockaddr*)&servaddr, sizeof(servaddr));
 
 		if (ret)
 		{
@@ -402,37 +412,99 @@ namespace
 			return NULL;
 		}
 
-		if ((ret = net_listen(sock, 5)))
+		if ((ret = net_listen(listenfd, MAX_CLIENTS)))
 		{
 			std::cout << "Error " << ret << " listening!" << std::endl;
 			return NULL;
 		}
 
+		clients[0].socket = listenfd;
+		clients[0].events = POLLIN;
+		for (i = 1; i < MAX_CLIENTS; i++)
+		{
+			clients[i].socket = -1;
+		}
+		maxi = 0;
+
 		while (1)
 		{
-			client_socket = net_accept(sock, (struct sockaddr *)&client, &clientlen);
+			std::cout << "Polling for new connections" << std::endl;
+			nready = net_poll(clients, maxi + 1, timeout);
+			std::cout << "Poll completed" << std::endl;
 
-			if (client_socket < 0)
+			// If the listening socket has an incoming connection, add it to the clients pollsd[]
+			if (clients[0].revents & POLLIN)
 			{
-				std::cout << "Error connecting socket " << client_socket << std::endl;
-				while (1);
+				clilen = sizeof(cliaddr);
+				connfd = net_accept(listenfd, (sockaddr*) &cliaddr, &clilen);
+				// TODO: should we check if connfd < 0 like IBM does?
+				for (i = 1; i < MAX_CLIENTS; i++)
+				{
+					if (clients[i].socket == -1)
+					{
+						clients[i].socket = connfd;
+						clients[i].events = POLLIN;
+						maxi = (i > maxi) ? i : maxi;
+						break;
+					}
+				}
+
+				// If poll says that no sockets are ready to be read from, poll again.
+				if (--nready <= 0)
+				{
+					continue;
+				}
 			}
 
+			for (i = 1; i <= maxi; i++)
+			{
+				if (clients[i].socket == -1)
+					continue;
 
-			std::cout << "Connecting port " << client.sin_port << " from " <<  inet_ntoa(client.sin_addr) << std::endl;
+				if (clients[i].revents & (POLLIN | POLLERR))
+				{
+					// Read socket and check for errors
+					if ((n = net_read(clients[i].socket, &buf, sizeof(buf)-1)) < 0)
+					{
+						if (errno == ECONNRESET)
+						{
+							net_close(clients[i].socket);
+							printf("The connection %d aborted\n", clients[i].socket);
+                        	clients[i].socket = -1;
+						}
+						else if (errno == EWOULDBLOCK)
+						{
+							printf("Read would block\n");
+						}
+						else
+						{
+							printf("Read error and errno is %d\n", errno);
+						}
+					}
+					// If we have reached EOF
+					else if (n == 0)
+					{
+						printf("Reached EOF, closing socket\n");
+						net_close(clients[i].socket);
+						clients[i].socket = -1;
+					}
+					else 
+					{
+						buf[n] = 0;
+						printf("Handling request from fd %d\n", clients[i].socket);
+						Request req(buf, n);
 
-			buflen = net_recv(client_socket, buf, sizeof(buf) - 1, 0);
-			buf[buflen] = 0;
-			std::cout << "Received " << buflen << " bytes" << std::endl;
+						handle_request(clients[i].socket, req, game);
+						net_close(clients[i].socket);
+						clients[i].socket = -1;
+                	}
 
-			Request req(buf, buflen);
-
-			std::cout << "Handling request" << std::endl;
-			handle_request(client_socket, req, game);
-
-			std::cout << "Closing connection" << std::endl;
-			net_close(client_socket);
-
+					if (--nready <= 0)
+					{
+						break;
+					}
+				}
+			}
 		}
 		
 		return NULL;

@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 	}
 
 	std::cout << "Clearing temp folder" << std::endl;
-	DIR* tmp_dir = opendir("sd://data/wiiko/tmp/");
+	DIR* tmp_dir = opendir("sd://apps/wiiko/tmp/");
 	if (tmp_dir == NULL)
 	{
 		std::cout << "could not open tmp dir" << std::endl;
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 		if(strcmp(".", tmp_ent->d_name) != 0 && strcmp("..", tmp_ent->d_name) != 0)
 		{
 			char pathbuf[50];
-			sprintf(pathbuf, "sd://data/wiiko/tmp/%s", tmp_ent->d_name);
+			sprintf(pathbuf, "sd://apps/wiiko/tmp/%s", tmp_ent->d_name);
 			if (tmp_ent->d_type == DT_REG)
 			{
 				if (!remove(pathbuf))
@@ -112,12 +112,12 @@ int main(int argc, char **argv)
 			exit(0);
 		}
 
-		if(LWP_MutexTryLock(game.mutex))
-		{
+		// if(LWP_MutexTryLock(game.mutex))
+		// {
 			// TODO: Be able to get time left on graphics thread
 			game.check_next_state_timeout();
-			LWP_MutexUnlock(game.mutex);
-		}
+		// 	LWP_MutexUnlock(game.mutex);
+		// }
 
 	}
 

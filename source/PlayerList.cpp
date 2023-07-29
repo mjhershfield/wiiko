@@ -8,16 +8,9 @@ PlayerList::Player::Player(std::string username, ProfilePicture pfp) :
     username(username), victory_quote(), pfp(pfp), admin(false)
 {}
 
-std::vector<const std::string*> PlayerList::get_player_list()
+const std::map<uint32_t, PlayerList::Player>& PlayerList::get_player_list()
 {
-    std::vector<const std::string*> names_list;
-    names_list.reserve(this->players.size());
-    for (const std::pair<const uint32_t, Player>& player : this->players)
-    {
-        names_list.push_back(&player.second.username);
-    }
-
-    return names_list;
+    return this->players;
 }
 
 uint32_t PlayerList::add_player(std::string username)

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <array>
 #include "PlayerList.h"
 
 // TODO: be consistent with what should be public and what should be private
@@ -42,16 +43,24 @@ private:
         PlayerSubmission(uint32_t creator, std::string data): creator(creator), data(data) {};
     };
 
+    struct ShirtOptions {
+        uint32_t player_id;
+        std::vector<size_t> image_options;
+        std::vector<size_t> quote_options;
+
+        ShirtOptions(uint32_t id): player_id(id) {};
+    };
+
     GameState current_state;
     GameState next_state;
     uint64_t current_timeout;
     std::vector<RoundSettings> rounds;
     uint8_t current_round;
     uint8_t current_subround;
-    uint8_t num_battles_needed;
     std::vector<PlayerSubmission> image_list;
     std::vector<PlayerSubmission> slogan_list;
     std::map<uint32_t, uint8_t> submitted_players;
+    std::vector<ShirtOptions> player_shirt_options;
 
 public:
     Game();
@@ -65,4 +74,6 @@ public:
     void add_image_from_blob(uint32_t creator, char* blob, size_t blob_size);
     void add_slogan(uint32_t creator, std::string slogan);
     uint8_t player_num_submissions(uint32_t id);
+
+    void create_shirt_options();
 };

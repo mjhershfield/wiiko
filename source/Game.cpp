@@ -2,6 +2,7 @@
 #include <ogc/mutex.h>
 #include <ogc/lwp_watchdog.h>
 #include <stdio.h>
+#include <algorithm>
 #include "Game.h"
 
 Game::Game()
@@ -17,11 +18,10 @@ void Game::reset()
     this->current_timeout = INT32_MAX;
     this->current_round = 0;
     this->current_subround = 0;
-    this->num_battles_needed = 0;
     this->rounds = {
         {
             .num_drawing_rounds = 3,
-            .draw_timeout = 10000,
+            .draw_timeout = 20000,
             .write_timeout = INT32_MAX,
             .shirt_timeout = 10000,
             .battle_timeout = 10000,
@@ -68,7 +68,7 @@ void Game::go_to_next_state()
             new_next_state = Battle;
             break;
         case Battle:
-            if (++(this->current_subround) < this->num_battles_needed)
+            if (++(this->current_subround) < this->players.num_players() - 1)
                 new_next_state = Battle;
             else if (++this->current_round < this->rounds.size())
                 new_next_state = Draw;
@@ -107,13 +107,13 @@ void Game::go_to_next_state()
             break;
         case Shirt:
             this->current_timeout += this->rounds.at(current_round).shirt_timeout; 
+            create_shirt_options();
             // TODO: Create shirt offerings here    
             break;
         case Battle:
             this->current_timeout += this->rounds.at(current_round).battle_timeout;
             // TODO: Create battles here
             // TODO: Battle state crashes server
-            this->num_battles_needed = 1;
             this->current_subround = 0;
             break;
         case End:
@@ -143,7 +143,7 @@ uint32_t Game::check_next_state_timeout()
 void Game::add_image_from_blob(uint32_t creator, char* blob, size_t blob_size)
 {
     char buf[50];
-    sprintf(buf, "sd://data/wiiko/tmp/%X%X.jpg", creator, image_list.size());
+    sprintf(buf, "sd://apps/wiiko/tmp/%X%X.jpg", creator, image_list.size());
     FILE* image_file = fopen(buf, "wb");
     if (image_file == NULL)
     {
@@ -172,4 +172,23 @@ void Game::add_slogan(uint32_t creator, std::string slogan)
 uint8_t Game::player_num_submissions(uint32_t id)
 {
     return this->submitted_players[id];
+}
+
+void Game::create_shirt_options()
+{
+    this->player_shirt_options.clear();
+    std::random_shuffle(this->image_list.begin(), this->image_list.end());
+    std::random_shuffle(this->slogan_list.begin(), this->slogan_list.end());
+
+    const std::map<uint32_t, PlayerList::Player> player_list = this->players.get_player_list();
+
+    size_t num_images_per_player = this->image_list.size()/this->players.num_players();
+    size_t num_slogans_per_player = this->image_list.size()/this->players.num_players();
+
+    // Assign quotes starting with the player with the most submissions?
+    // Or we could just make no guarantee that you won't get your own submissions.
+    for (const auto player : player_list)
+    {
+        this->player_shirt_options.emplace_back(player.first);
+    }
 }
