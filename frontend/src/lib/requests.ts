@@ -1,8 +1,7 @@
-export const base_url = import.meta.env.DEV ? "http://localhost" : "";
+export const base_url = import.meta.env.DEV ? "http://localhost:8080" : window.location.origin;
 
-export async function send_json_post_request(url: string, body: any)
+export async function send_json_post_request(path: string, body: any)
 {
-    console.log("Sending POST request to", url);
     let request: RequestInit = {
         method: "POST",
         headers: [
@@ -11,14 +10,15 @@ export async function send_json_post_request(url: string, body: any)
         body : JSON.stringify(body)
     };
     // TODO: If request fails, stop interval.
+    let url: string = base_url + path
+    console.log("Sending POST request to", url);
     let resp = await fetch(url, request);
     let resp_json: Promise<any> = resp.json();
     return resp_json;
 }
 
-export async function send_json_get_request(url: string)
+export async function send_json_get_request(path: string)
 {
-    console.log("Sending GET request to", url);
     let request: RequestInit = {
         method: "GET",
         headers: [
@@ -26,19 +26,22 @@ export async function send_json_get_request(url: string)
         ],
     };
     // TODO: If request fails, stop interval.
+    let url: string = base_url + path
+    console.log("Sending GET request to", url);
     let resp = await fetch(url, request);
     let resp_json: Promise<any> = resp.json();
     return resp_json;
 }
 
-export async function send_raw_request(method: string, url: string, body: any)
+export async function send_raw_request(method: string, path: string, body: any)
 {
-    console.log("Sending ", method, " request to", url);
     let request: RequestInit = {
         method: method,
         body : body
     };
     // TODO: If request fails, stop interval.
+    let url: string = base_url + path
+    console.log("Sending ", method, " request to", url);
     let resp = await fetch(url, request);
     let resp_json: Promise<any> = resp.json();
     return resp_json;

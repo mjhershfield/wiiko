@@ -31,7 +31,7 @@
 
     async function update_lobby()
     {
-        let resp_json: LobbyResponse = await send_json_get_request(base_url+"/lobby?id="+$id_store);
+        let resp_json: LobbyResponse = await send_json_get_request("/lobby?id="+$id_store);
         if (resp_json.success)
         {
             admin = resp_json.admin!;
@@ -54,7 +54,7 @@
         {
             return;
         }
-        let resp_json: SuccessResponse = await send_json_post_request(base_url+"/lobby?id="+$id_store, {pfp: new_pfp});
+        let resp_json: SuccessResponse = await send_json_post_request("/lobby?id="+$id_store, {pfp: new_pfp});
         if (resp_json.success)
         {
             update_lobby();
@@ -81,7 +81,7 @@
             return;
         }
 
-        let resp_json: SuccessResponse = await send_json_post_request(base_url+"/lobby?id="+$id_store, {quote: victory_quote});
+        let resp_json: SuccessResponse = await send_json_post_request("/lobby?id="+$id_store, {quote: victory_quote});
         if (resp_json.success)
         {
             update_lobby();
@@ -104,7 +104,7 @@
     }
 
     async function start_game() {
-        await fetch(base_url+"/start?id="+$id_store, {method:"POST"});
+        await fetch(base_url + "/start?id="+$id_store, {method:"POST"});
     }
 </script>
 

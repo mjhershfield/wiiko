@@ -32,7 +32,7 @@
 	});
 
 	async function update_game_state() {
-		let resp_json: StateResponse = await send_json_get_request(base_url + "/state?id="+$id_store);
+		let resp_json: StateResponse = await send_json_get_request("/state?id="+$id_store);
 		let new_state: GameState;
 		if (resp_json.success)
 		{

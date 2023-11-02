@@ -19,7 +19,7 @@
 	async function submit_form()
 	{
 		input_class = "";
-		let resp_json: JoinResponse = await send_json_post_request(base_url+"/join", {username: username.toLowerCase()});
+		let resp_json: JoinResponse = await send_json_post_request("/join", {username: username.toLowerCase()});
 		if (resp_json.success)
 		{
 			username_store.set(username);

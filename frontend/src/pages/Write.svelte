@@ -12,7 +12,7 @@
 	})
 
 	async function update_write() {
-		let resp_json: WriteResponse = await send_json_get_request(base_url+"/write?id="+$id_store);
+		let resp_json: WriteResponse = await send_json_get_request("/write?id="+$id_store);
 		if (resp_json.success)
 		{
 			console.log("Updating state in ", (resp_json.timeout! + 1000)/1000, " seconds");
@@ -34,7 +34,7 @@
 		{
 			return;
 		}
-		let resp_json: SuccessResponse = await send_json_post_request(base_url+"/write?id="+$id_store, {slogan: slogan});
+		let resp_json: SuccessResponse = await send_json_post_request("/write?id="+$id_store, {slogan: slogan});
 		if (resp_json.success)
 		{
 			toastStore.clear();

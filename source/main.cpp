@@ -42,6 +42,8 @@ int main(int argc, char **argv)
 		while (1);
 	}
 
+	std::cout << "Filesystem initialized!" << std::endl;
+
 	std::cout << "Clearing temp folder" << std::endl;
 	DIR* tmp_dir = opendir("sd://apps/wiiko/tmp/");
 	if (tmp_dir == NULL)
@@ -57,7 +59,7 @@ int main(int argc, char **argv)
 
 		if(strcmp(".", tmp_ent->d_name) != 0 && strcmp("..", tmp_ent->d_name) != 0)
 		{
-			char pathbuf[50];
+			char pathbuf[300];
 			sprintf(pathbuf, "sd://apps/wiiko/tmp/%s", tmp_ent->d_name);
 			if (tmp_ent->d_type == DT_REG)
 			{
@@ -74,7 +76,6 @@ int main(int argc, char **argv)
 	}
 
 	closedir(tmp_dir);
-	
 
 
 	std::cout << "Configuring network ..." << std::endl;

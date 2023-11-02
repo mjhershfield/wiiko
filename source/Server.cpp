@@ -18,16 +18,17 @@ using namespace rapidjson;
 
 #define http_200 "HTTP/1.1 200 OK\r\n"
 
-#define http_404 "HTTP/1.1 404 Not Found\r\n\r\n"
+#define http_404 "HTTP/1.1 404 Not Found\r\n"
 
-#define http_json_hdr "Content-type: application/json\r\n\r\n"
+#define http_json_hdr "Content-type: application/json\r\n"
 
 #define content_len_hdr "Content-Length: %u\r\n"
 
-#define http_html_gzip_hdr "Content-type: text/html\r\nContent-Encoding: gzip\r\n\r\n"
+#define http_html_gzip_hdr "Content-type: text/html\r\nContent-Encoding: gzip\r\n"
 
-#define http_jpeg_hdr "Content-type: image/jpeg\r\n\r\n"
+#define http_jpeg_hdr "Content-type: image/jpeg\r\n"
 
+#define http_cors_hdr "Access-Control-Allow-Origin: *\r\n\r\n"
 
 namespace Server
 {
@@ -153,6 +154,7 @@ namespace
 		size_t content_len_len = sprintf(content_len_with_size, content_len_hdr, index_html_len);
 		net_send(client_socket, content_len_with_size, content_len_len, 0);
 		net_send(client_socket, http_html_gzip_hdr, sizeof(http_html_gzip_hdr) - 1, 0);
+		net_send(client_socket, http_cors_hdr, sizeof(http_cors_hdr) - 1, 0);
 
 		size_t amount_transferred = 0, amount_to_transfer = 0, index_send_result;
 		while (amount_transferred < index_html_len)
@@ -329,6 +331,7 @@ namespace
 		size_t content_len_len = sprintf(content_len_with_size, content_len_hdr, image_len);
 		net_send(client_socket, content_len_with_size, content_len_len, 0);
 		net_send(client_socket, http_jpeg_hdr, sizeof(http_jpeg_hdr) - 1, 0);
+		net_send(client_socket, http_cors_hdr, sizeof(http_cors_hdr) - 1, 0);
 
 		size_t amount_transferred = 0, amount_to_transfer = 0, index_send_result;
 		while (amount_transferred < image_len)
@@ -360,12 +363,14 @@ namespace
 		json.Accept(writer);
 		net_send(client_socket, http_200, sizeof(http_200) - 1, 0);
 		net_send(client_socket, http_json_hdr, sizeof(http_json_hdr) - 1, 0);
+		net_send(client_socket, http_cors_hdr, sizeof(http_cors_hdr) - 1, 0);
 		net_send(client_socket, buffer.GetString(), buffer.GetSize(), 0);
 	}
 
 	void send_404(int32_t client_socket)
 	{
 		net_send(client_socket, http_404, sizeof(http_404) - 1, 0);
+		net_send(client_socket, http_cors_hdr, sizeof(http_cors_hdr) - 1, 0);
 	}
 }
 
@@ -402,7 +407,7 @@ namespace
 
 		memset(&servaddr, 0, sizeof(servaddr));
 		servaddr.sin_family = AF_INET;
-		servaddr.sin_port = htons(80);
+		servaddr.sin_port = htons(8080);
 		servaddr.sin_addr.s_addr = INADDR_ANY;
 		ret = net_bind(listenfd, (sockaddr*)&servaddr, sizeof(servaddr));
 

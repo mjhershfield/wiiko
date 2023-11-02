@@ -98,7 +98,7 @@
 			console.log("Image failed to save");
 			return;
 		}
-		let resp_json: SuccessResponse = await send_raw_request("POST", base_url+"/draw?id="+$id_store, blob);
+		let resp_json: SuccessResponse = await send_raw_request("POST", "/draw?id="+$id_store, blob);
 		if (resp_json.success)
 		{
 			toastStore.clear();
@@ -120,7 +120,7 @@
 
 	async function update_draw()
     {
-        let resp_json: DrawResponse = await send_json_get_request(base_url+"/draw?id="+$id_store);
+        let resp_json: DrawResponse = await send_json_get_request("/draw?id="+$id_store);
         if (resp_json.success)
         {
             submitted = resp_json.submitted!;
