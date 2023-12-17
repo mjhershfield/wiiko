@@ -1,11 +1,16 @@
+use std::str::FromStr;
+
 use crate::{Client, Clients};
+use crate::game::types::*;
+
+use futures::stream::SplitStream;
 use futures::{FutureExt, StreamExt};
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
 
-pub async fn client_connection(ws: WebSocket, clients: Clients) {
+pub async fn client_connection(ws: WebSocket, clients: Clients, gamestate_tx: UnboundedSender<MpscMessage>) {
     println!("establishing client connection... {:?}", ws);
 
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
@@ -19,17 +24,19 @@ pub async fn client_connection(ws: WebSocket, clients: Clients) {
         }
     }));
 
-    let _ = client_sender.send(Ok(Message::text("Welcome!")));
-
     let uuid = Uuid::new_v4().simple().to_string();
 
     let new_client = Client {
-        client_id: uuid.clone(),
         sender: Some(client_sender),
     };
 
     clients.lock().await.insert(uuid.clone(), new_client);
 
+    tokio::task::spawn(client_task(clients, client_ws_rcv, gamestate_tx, uuid));
+    
+}
+
+async fn client_task(clients: Clients, mut client_ws_rcv: SplitStream<WebSocket>, gamestate_tx: UnboundedSender<MpscMessage>, uuid: String) {
     while let Some(result) = client_ws_rcv.next().await {
         let msg = match result {
             Ok(msg) => msg,
@@ -38,32 +45,37 @@ pub async fn client_connection(ws: WebSocket, clients: Clients) {
                 break;
             }
         };
-        client_msg(&uuid, msg, &clients).await;
+        client_msg(&uuid, msg, &gamestate_tx).await;
     }
 
     clients.lock().await.remove(&uuid);
     println!("{} disconnected", uuid);
 }
 
-async fn client_msg(client_id: &str, msg: Message, clients: &Clients) {
-    println!("received message from {}: {:?}", client_id, msg);
+async fn client_msg(client_id: &str, msg: Message, gamestate_tx: &UnboundedSender<MpscMessage>) {
 
+    // Pass all messages received from the client to the gamestate thread.
+    let parsed_message: WsMessage = parse_client_message(msg);
+    println!("Sending to gamestate_tx!");
+    match gamestate_tx.send(MpscMessage {client_id: client_id.to_string(), msg: parsed_message}) {
+        Ok(()) => println!("message sent successfully"),
+        Err(e) => println!("Error: {}", e.to_string())
+    };
+
+}
+
+fn parse_client_message(msg: Message) -> WsMessage {
+    
     let message = match msg.to_str() {
         Ok(v) => v,
-        Err(_) => return,
+        Err(_) => return WsMessage::Result { success: false, reason: "Message is not text".to_string() },
     };
 
-    if message == "ping" || message == "ping\n" {
-        let locked = clients.lock().await;
-        match locked.get(client_id) {
-            Some(v) => {
-                if let Some(sender) = &v.sender {
-                    println!("sending pong");
-                    let _ = sender.send(Ok(Message::text("pong")));
-                }
-            }
-            None => return,
-        }
-        return;
+    let parsed_json: WsMessage = match serde_json::from_str(message) {
+        Ok(s) => s,
+        Err(e) => return WsMessage::Result { success: false, reason: String::from_str("Invalid request JSON").unwrap() },
     };
+
+    println!("Received message: {:?}", parsed_json);
+    parsed_json
 }
