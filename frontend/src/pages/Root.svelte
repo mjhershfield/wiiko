@@ -8,9 +8,10 @@
 
 <script lang="ts">
 	import { toastStore } from "@skeletonlabs/skeleton";
-	import { username_store, id_store } from "../lib/stores";
-	import { base_url, send_json_post_request } from "../lib/requests"
+	import { admin_store, character_store, username_store, uuid_store } from "../lib/stores";
+	import { send_json_post_request } from "../lib/requests"
     import { update_game_state } from "../lib/gamestate";
+	import type {JoinResponse} from "../lib/request_types"
 
 	let username: string = "";
 	let input_class: string = "";
@@ -19,11 +20,13 @@
 	async function submit_form()
 	{
 		input_class = "";
-		let resp_json: JoinResponse = await send_json_post_request("/join", {username: username.toLowerCase()});
+		let resp_json: JoinResponse = await send_json_post_request("/join", $uuid_store, {username: username.toLowerCase()});
 		if (resp_json.success)
 		{
 			username_store.set(username);
-			id_store.set(resp_json.id!);
+			uuid_store.set(resp_json.uuid);
+			character_store.set(resp_json.character);
+			admin_store.set(resp_json.admin);
 			toastStore.clear();
 			toastStore.trigger({
 				message: "Joined game successfully",

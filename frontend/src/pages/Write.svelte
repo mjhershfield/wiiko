@@ -1,32 +1,10 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { update_game_state } from '../lib/gamestate';
-	import { base_url, send_json_get_request, send_json_post_request, send_raw_request } from '../lib/requests';
-	import { id_store } from '../lib/stores';
+    import { send_json_post_request } from '../lib/requests';
+	import { uuid_store } from '../lib/stores';
 	import { toastStore } from '@skeletonlabs/skeleton';
+	import type {SuccessResponse} from "../lib/request_types"
 	
 	let slogan: string;
-
-	onMount(()=>{
-		update_write();
-	})
-
-	async function update_write() {
-		let resp_json: WriteResponse = await send_json_get_request("/write?id="+$id_store);
-		if (resp_json.success)
-		{
-			console.log("Updating state in ", (resp_json.timeout! + 1000)/1000, " seconds");
-			setTimeout(update_game_state, resp_json.timeout! + 1000);
-		}
-		else
-		{
-			toastStore.clear();
-            toastStore.trigger({
-				message: "Error: " + resp_json.reason!,
-				background: "variant-filled-error"
-			});
-		}
-	}
 
 	async function submit_slogan()
 	{
@@ -34,7 +12,7 @@
 		{
 			return;
 		}
-		let resp_json: SuccessResponse = await send_json_post_request("/write?id="+$id_store, {slogan: slogan});
+		let resp_json: SuccessResponse = await send_json_post_request("/write", $uuid_store, {quote: slogan});
 		if (resp_json.success)
 		{
 			toastStore.clear();

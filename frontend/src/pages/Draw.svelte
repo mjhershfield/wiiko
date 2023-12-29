@@ -1,8 +1,9 @@
 <script lang="ts">
     import { update_game_state } from '../lib/gamestate';
 	import { base_url, send_json_get_request, send_json_post_request, send_raw_request } from '../lib/requests';
-	import { id_store } from '../lib/stores';
+	import { uuid_store } from '../lib/stores';
 	import { toastStore } from '@skeletonlabs/skeleton';
+	import type {SuccessResponse, DrawResponse} from "../lib/request_types"
 	
 	let colors = [
 		'#ce2029',
@@ -26,8 +27,8 @@
 
 	import { onMount } from 'svelte'
 	
-	let width = 300
-	let height = 300
+	let width = 256
+	let height = 256
 		
 	let canvas: HTMLCanvasElement;
 	let context: CanvasRenderingContext2D;
@@ -52,7 +53,6 @@
 		context.fillRect(0, 0, width, height);
 		context.strokeStyle = brush_color;	
 		handleSize();
-		update_draw();
 	})
 	
 	const handleStart = (({ offsetX: x, offsetY: y }: OffsetCoord) => { 
@@ -88,17 +88,8 @@
 
 	async function submit_image()
 	{
-		canvas.toBlob(send_image_blob, 'image/jpeg', 0.5);
-	}
-
-	async function send_image_blob(blob: Blob|null)
-	{
-		if (blob == null)
-		{
-			console.log("Image failed to save");
-			return;
-		}
-		let resp_json: SuccessResponse = await send_raw_request("POST", "/draw?id="+$id_store, blob);
+		let image_base64 = canvas.toDataURL('image/png');
+		let resp_json: SuccessResponse = await send_json_post_request("/draw", $uuid_store, {drawing: image_base64, bg_color: 0xFFFFFFFF})
 		if (resp_json.success)
 		{
 			toastStore.clear();
@@ -106,7 +97,8 @@
 				message: "Drawing submitted successfully",
 				background: "variant-filled-success"
 			});
-			update_draw();
+			context.fillStyle = background;
+			context.fillRect(0, 0, width, height);
 		}
 		else
 		{
@@ -117,35 +109,6 @@
 			});
 		}
 	}
-
-	async function update_draw()
-    {
-        let resp_json: DrawResponse = await send_json_get_request("/draw?id="+$id_store);
-        if (resp_json.success)
-        {
-            submitted = resp_json.submitted!;
-			clearTimeout(submit_timeout);
-			if (!submitted)
-			{
-            	submit_timeout = setTimeout(submit_image, resp_json.timeout! - 5000);
-				console.log("Auto-submitting in ", (resp_json.timeout!-5000)/1000," seconds");
-				console.log("Updating state in ", (resp_json.timeout! + 1000)/1000, " seconds");
-				setTimeout(update_game_state, resp_json.timeout!+1000);
-			}
-			else
-			{
-				console.log("Submitted", (resp_json.timeout!-1000)/1000, " seconds left");
-			}
-        }
-        else
-        {
-            toastStore.clear();
-            toastStore.trigger({
-				message: "Error: " + resp_json.reason!,
-				background: "variant-filled-error"
-			});
-        }
-    }
 </script>
 
 <svelte:window on:resize={handleSize} />

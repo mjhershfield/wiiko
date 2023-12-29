@@ -1,26 +1,55 @@
+import type { Character } from "./characters"
+import type { GameState } from "./gamestate"
+
 interface SuccessResponse {
     success: boolean,
-    reason: string | undefined
+    reason: string
 }
 
 interface JoinResponse extends SuccessResponse {
-    id: number | undefined
+    uuid: string,
+    character: Character,
+    admin: boolean
 }
 
 interface StateResponse extends SuccessResponse{
-    state: number | undefined
+    state: GameState
 }
 
-interface LobbyResponse extends SuccessResponse {
-    admin: boolean | undefined,
-    pfp: number | undefined
+type Uuid = string;
+
+interface Drawing {
+    data_base64: string,
+    bg_color: number
+}
+
+interface Quote {
+    quote: string
+}
+
+interface Shirt {
+    drawing: Drawing,
+    quote: Quote
+}
+
+interface ShirtOptionsResponse extends SuccessResponse {
+    drawings: Uuid[],
+    quotes: Uuid[]
 }
 
 interface DrawResponse extends SuccessResponse {
-    timeout: number | undefined,
-    submitted: boolean | undefined
+    drawing: Drawing
 }
 
-interface WriteResponse extends SuccessResponse {
-    timeout: number | undefined
+interface QuoteResponse extends SuccessResponse {
+    quote: Quote
+}
+
+interface ShirtResponse extends SuccessResponse {
+    shirt: Shirt
+}
+
+interface MatchupResponse extends SuccessResponse {
+    shirt0: Uuid,
+    shirt1: Uuid
 }

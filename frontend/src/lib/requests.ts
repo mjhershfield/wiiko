@@ -1,11 +1,12 @@
-export const base_url = import.meta.env.DEV ? "http://localhost:8080" : window.location.origin;
+export const base_url = import.meta.env.DEV ? "http://localhost:8000" : window.location.origin;
 
-export async function send_json_post_request(path: string, body: any)
+export async function send_json_post_request(path: string, uuid: string, body: any)
 {
     let request: RequestInit = {
         method: "POST",
         headers: [
-            ["Content-Type", "application/json"]
+            ["Content-Type", "application/json"],
+            ["x-client-uuid", uuid]
         ],
         body : JSON.stringify(body)
     };
@@ -17,12 +18,13 @@ export async function send_json_post_request(path: string, body: any)
     return resp_json;
 }
 
-export async function send_json_get_request(path: string)
+export async function send_json_get_request(path: string, uuid: string)
 {
     let request: RequestInit = {
         method: "GET",
         headers: [
-            ["Content-Type", "application/json"]
+            ["Content-Type", "application/json"],
+            ["x-client-uuid", uuid]
         ],
     };
     // TODO: If request fails, stop interval.

@@ -1,25 +1,19 @@
 <script lang="ts">
     import { Avatar } from '@skeletonlabs/skeleton';
-    import { ProfilePicture, profile_picture_data, type ProfilePictureData } from '../lib/profile_pictures';
-    import { base_url, send_json_get_request, send_json_post_request } from "../lib/requests";
-	import { id_store, pfp_store } from '../lib/stores';
+    import { Character, character_data, type CharacterData } from '../lib/characters';
+    import { send_json_post_request } from "../lib/requests";
+	import { uuid_store, character_store, admin_store } from '../lib/stores';
     import { toastStore } from '@skeletonlabs/skeleton';
-	import { onMount } from 'svelte';
-    import { update_game_state } from '../lib/gamestate';
+    import type {SuccessResponse} from '../lib/request_types'
 
     let current_victory_quote: string = "";
     let victory_quote: string = "";
-    let profile_pictures: ProfilePictureData[] = profile_picture_data;
-    let admin: boolean = false;
-    let selected_pfp: ProfilePicture = $pfp_store;
+    let characters: CharacterData[] = character_data;
+    let selected_character: Character = $character_store;
 
-    onMount(()=>{
-        update_lobby();
-    });
-
-    function determine_avatar_border(pfp: ProfilePicture): string
+    function determine_avatar_border(pfp: Character): string
     {
-        if (pfp == $pfp_store)
+        if (pfp == $character_store)
         {
             return "border-4 border-primary-500"
         }
@@ -29,35 +23,17 @@
         }
     }
 
-    async function update_lobby()
+    async function set_pfp(new_pfp: Character)
     {
-        let resp_json: LobbyResponse = await send_json_get_request("/lobby?id="+$id_store);
-        if (resp_json.success)
-        {
-            admin = resp_json.admin!;
-            pfp_store.set(resp_json.pfp!);
-            profile_pictures = profile_pictures;
-        }
-        else
-        {
-            toastStore.clear();
-            toastStore.trigger({
-				message: "Error: " + resp_json.reason!,
-				background: "variant-filled-error"
-			});
-        }
-    }
-
-    async function set_pfp(new_pfp: ProfilePicture)
-    {
-        if (selected_pfp == new_pfp)
+        if (selected_character == new_pfp)
         {
             return;
         }
-        let resp_json: SuccessResponse = await send_json_post_request("/lobby?id="+$id_store, {pfp: new_pfp});
+        let resp_json: SuccessResponse = await send_json_post_request("/players/character", $uuid_store, {new_character: new_pfp});
         if (resp_json.success)
         {
-            update_lobby();
+            character_store.set(new_pfp);
+            characters = characters;
             toastStore.clear();
             toastStore.trigger({
 				message: "Profile picture updated",
@@ -81,10 +57,9 @@
             return;
         }
 
-        let resp_json: SuccessResponse = await send_json_post_request("/lobby?id="+$id_store, {quote: victory_quote});
+        let resp_json: SuccessResponse = await send_json_post_request("/players/quote", $uuid_store, {new_quote: victory_quote});
         if (resp_json.success)
         {
-            update_lobby();
             toastStore.clear();
             toastStore.trigger({
 				message: "Victory quote updated",
@@ -104,14 +79,22 @@
     }
 
     async function start_game() {
-        await fetch(base_url + "/start?id="+$id_store, {method:"POST"});
+        let resp_json: SuccessResponse = await send_json_post_request("/game/start", $uuid_store, {starting: true});
+        if (!resp_json.success)
+        {
+            toastStore.clear();
+            toastStore.trigger({
+				message: "Error: " + resp_json.reason!,
+				background: "variant-filled-error"
+			});
+        }
     }
 </script>
 
 <div class="space-y-10 text-center flex flex-col items-center p-4">
     <h2 class="h2">Choose your fighter</h2>
     <div class=" flex flex-row flex-wrap gap-4 justify-center">
-        {#each profile_pictures as pfp}
+        {#each characters as pfp}
             <Avatar 
                 initials={pfp.initials} 
                 border={determine_avatar_border(pfp.name)}
@@ -128,7 +111,7 @@
         <button class="btn variant-filled-primary" on:click|preventDefault={update_quote}>Submit</button>
     </form>
 
-    {#if admin}
+    {#if $admin_store}
         <button class="btn variant-filled-secondary" on:click={start_game}>Start Game</button>
     {/if}
 </div>

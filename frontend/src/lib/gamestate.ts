@@ -1,11 +1,12 @@
 export enum GameState
 {
-    Wait = 0,
-    Lobby,
+    Lobby = 0,
+    Wait,
     Draw,
     Write,
     Shirt,
     Battle,
+    FinalBattle,
     End,
     NotJoined,
     InitialState
