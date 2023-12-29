@@ -1,0 +1,15 @@
+[package]
+name = "server-rocket"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rocket = { version = "0.5.0", features = ["json"]}
+uuid = { version = "1.1.2", features = ["serde", "v4"] }
+strum = "0.25"
+strum_macros = "0.25"
+rand = "0.8"
+serde_repr = "0.1"
+itertools = "0.12"
