@@ -10,8 +10,8 @@ mod game;
 
 #[derive(Debug, Clone)]
 pub struct Client {
-    // pub associated_player_id: Option<String>,
-    pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
+    pub associated_player_id: Option<String>,
+    pub sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
 }
 
 type Clients = Arc<Mutex<HashMap<String, Client>>>;

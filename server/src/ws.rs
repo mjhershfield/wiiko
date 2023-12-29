@@ -13,7 +13,7 @@ use warp::ws::{Message, WebSocket};
 pub async fn client_connection(ws: WebSocket, clients: Clients, gamestate_tx: UnboundedSender<MpscMessage>) {
     println!("establishing client connection... {:?}", ws);
 
-    let (client_ws_sender, mut client_ws_rcv) = ws.split();
+    let (client_ws_sender, client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
 
     let client_rcv = UnboundedReceiverStream::new(client_rcv);
@@ -27,7 +27,8 @@ pub async fn client_connection(ws: WebSocket, clients: Clients, gamestate_tx: Un
     let uuid = Uuid::new_v4().simple().to_string();
 
     let new_client = Client {
-        sender: Some(client_sender),
+        associated_player_id: None,
+        sender: client_sender
     };
 
     clients.lock().await.insert(uuid.clone(), new_client);
