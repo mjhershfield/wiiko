@@ -1,5 +1,6 @@
 {
     "files.associations": {
         "stdexcept": "cpp"
-    }
+    },
+    "C_Cpp.default.compilerPath": "/opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc",
 }
