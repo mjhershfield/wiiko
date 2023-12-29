@@ -1,0 +1,21 @@
+meta {
+  name: Get Players
+  type: http
+  seq: 3
+}
+
+get {
+  url: 127.0.0.1:8000/players
+  body: none
+  auth: none
+}
+
+headers {
+  x-client-uuid: 6b043b00-49d2-4832-be99-9d85b9cbe2cb
+}
+
+body:json {
+  {
+    "state": 0
+  }
+}
