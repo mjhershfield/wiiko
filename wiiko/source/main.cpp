@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <wiiuse/wpad.h>
 #include <mii.h>
-#include "miidraw.h"
-#include "mii_config.h"
+#include "MiiImage.h"
+#include "Timer.h"
+#include "Shirt.h"
 
 #include "shirt_png.h"
 #include "drawing_png.h"
@@ -12,6 +13,7 @@
 
 void drawMiiBadge(GRRLIB_texImg* mii_tex, f32 centerx, f32 centery);
 void buildShirt(GRRLIB_texImg* base_shirt, GRRLIB_texImg* drawing, u32 bg_color, const char* text, GRRLIB_ttfFont* font, GRRLIB_texImg* final_shirt);
+void drawButton(f32 x, f32 y);
 
 int main(int argc, char **argv) {
     // Initialise the Graphics & Video subsystem
@@ -21,30 +23,34 @@ int main(int argc, char **argv) {
     WPAD_Init();
 
     GRRLIB_texImg* base_shirt_tex = GRRLIB_LoadTexture(shirt_png);
-    // 128x128 drawings
-    GRRLIB_texImg* drawing_tex = GRRLIB_LoadTexture(drawing_png);
-    GRRLIB_texImg* shirt1_tex = GRRLIB_CreateEmptyTexture(base_shirt_tex->w, base_shirt_tex->h);
-    GRRLIB_SetMidHandle(shirt1_tex, true);
 
-    GRRLIB_ttfFont *quicksand_font = GRRLIB_LoadTTF(AzeretMonoBold_ttf, AzeretMonoBold_ttf_size);
+    GRRLIB_ttfFont *azeret_font = GRRLIB_LoadTTF(AzeretMonoBold_ttf, AzeretMonoBold_ttf_size);
 
-    GRRLIB_MiisInit();
-
-    GRRLIB_texImg* mii_tex1 = GRRLIB_CreateEmptyTexture(180, 200);
-    GRRLIB_SetMidHandle(mii_tex1, true);
-
-    GRRLIB_texImg* mii_tex2 = GRRLIB_CreateEmptyTexture(180, 200);
-    GRRLIB_SetMidHandle(mii_tex2, true);
+    MiiImage::initialize(azeret_font);
+    Timer::initialize(azeret_font);
+    Shirt::initialize(azeret_font);
 
     GRRLIB_ClipDrawing(0, 0, rmode->fbWidth, rmode->efbHeight);
     GRRLIB_SetAntiAliasing(true);
 
     // Prep Miis and shirts (static textures)
-    GRRLIB_BuildMii(miis[0], 0, 0, 0, 0, mii_tex1);
-    GRRLIB_BuildMii(miis[1], 0, 0, 0, 0, mii_tex2);
+    MiiImage mii1(Character::MonaLisa, 90, 400);
+    mii1.set_bobbing_enabled(true);
+    mii1.set_name_card_enabled(false);
+    MiiImage mii2(Character::Hamburger, 550, 80);
+    mii2.set_bobbing_enabled(true);
+    mii2.set_name_card_enabled(true);
+
+    Timer timer;
+    timer.set_center(320, 240);
+    timer.start_timer(10);
 
     // Max 10 characters per line on shirt.
-    buildShirt(base_shirt_tex, drawing_tex, 0xFF0000FF, "Text here!", quicksand_font, shirt1_tex);
+
+    Shirt shirt1(160, 230, -10, GRRLIB_LoadTexture(drawing_png), 0xFF0000FF, "shirt 1");
+    shirt1.set_bobbing_enabled(true);
+    Shirt shirt2(480, 250, 10, GRRLIB_LoadTexture(drawing_png), 0xFF0000FF, "shirt 2!!!");
+    shirt2.set_bobbing_enabled(true);
 
     // Loop forever
     while(1) {
@@ -57,44 +63,33 @@ int main(int argc, char **argv) {
         // ---------------------------------------------------------------------
         // Place your drawing code here
         // ---------------------------------------------------------------------
+        if (!timer.is_running()) {
+            mii1.set_character((Character) (rand() % Character::Dad));
+            mii2.set_character((Character) (rand() % Character::Dad));
+            timer.start_timer(10);
+        }
+        mii1.composite();
+        mii2.composite();
+        shirt1.composite();
+        shirt2.composite();
+
         GRRLIB_FillScreen(0x3B3D91FF);    // Clear the screen
-        GRRLIB_PrintfTTF(170, 10, quicksand_font, "FIGHT!", 80, 0xFFFFFFFF);
+        GRRLIB_PrintfTTF(170, 10, azeret_font, "FIGHT!", 80, 0xFFFFFFFF);
 
-        GRRLIB_DrawImg(160, 230, shirt1_tex, -10, 1, 1, 0xFFFFFFFF);
-        drawMiiBadge(mii_tex1, 90, 400);
+        shirt1.render();
+        mii1.render();
 
-        GRRLIB_DrawImg(480, 250, shirt1_tex, 10, 1, 1, 0xFFFFFFFF);
-        drawMiiBadge(mii_tex2, 550, 80);
+        shirt2.render();
+        mii2.render();
 
-        GRRLIB_Circle(320, 240, 35, 0x000000FF, true);
-        GRRLIB_Circle(320, 240, 30, 0xFFFFFFFF, true);
-        GRRLIB_PrintfTTF(295, 215, quicksand_font, "60", 40, 0x000000FF);
+        timer.tick();
+        timer.render();
 
         GRRLIB_Render();  // Render the frame buffer to the TV
     }
 
     GRRLIB_FreeTexture(base_shirt_tex);
-    GRRLIB_FreeTexture(shirt1_tex);
-    GRRLIB_FreeTexture(mii_tex1);
-    GRRLIB_FreeTexture(mii_tex2);
-    GRRLIB_FreeTTF(quicksand_font);
     GRRLIB_Exit(); // Be a good boy, clear the memory allocated by GRRLIB
 
     exit(0);  // Use exit() to exit a program, do not use 'return' from main()
-}
-
-void drawMiiBadge(GRRLIB_texImg* mii_tex, f32 centerx, f32 centery)
-{
-    GRRLIB_Circle(centerx, centery, 65, 0x000000FF, true);
-    GRRLIB_Circle(centerx, centery, 60, 0xFFFFFFFF, true);
-    GRRLIB_DrawImg(centerx, centery+10, mii_tex, 0, 1, 1, 0xFFFFFFFF);
-}
-
-void buildShirt(GRRLIB_texImg* base_shirt, GRRLIB_texImg* drawing, u32 bg_color, const char* text, GRRLIB_ttfFont* font, GRRLIB_texImg* final_shirt)
-{
-    GRRLIB_CompoStart();
-    GRRLIB_DrawImg(0, 0, base_shirt, 0, 1, 1, bg_color);
-    GRRLIB_DrawImg(80, 26, drawing, 0, 1, 1, 0xFFFFFFFF);
-    GRRLIB_PrintfTTF(80, 154, font, text, 20, 0xFFFFFFFF);
-    GRRLIB_CompoEnd(0, 0, final_shirt);
 }

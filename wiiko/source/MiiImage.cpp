@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <mii.h>
 #include <grrlib.h>
-#include "mii_config.h"
+#include <math.h>
+#include "MiiImage.h"
+#include "default_miis.h"
 
 #include "mii_heads_png.h"
 #include "mii_hairs1_png.h"
@@ -17,7 +19,21 @@
 #include "mii_beards_png.h"
 #include "mii_mustache_png.h"
 #include "mii_glasses_png.h"
+#include "AzeretMonoBold_ttf.h"
 
+// ************************ DEFINE CONSTANTS ********************
+const unsigned int hairbg[72] = {56,56,56,56,56,56,56,56,56,56,56,56,16,56,56,56,56,56,17,18,56,19,20,56,56,56,21,56,56,56,56,56,56,56,56,56,22,23,56,56,24,25,56,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,56,56,48,49,50,51,52,53,56};
+const unsigned int hairfg[72] = {59,42,65,49,40,44,52,47,45,63,51,54,36,37,48,70,61,56,64,43,53,58,50,27,69,41,39,46,66,71,33,11,12,0,35,57,30,14,25,4,1,31,26,24,3,6,62,13,15,7,19,2,17,67,29,20,9,34,18,8,22,60,23,55,21,32,16,28,10,38,5,68};
+const unsigned int haircol[8] = {0x111111FF, 0x332222FF, 0x441111FF, 0xBB6644FF, 0x8888AAFF, 0x443322FF, 0x996644FF, 0xDDBB99FF};
+const unsigned int skincol[6] = {0xECCFBDFF, 0xF7BC7dFF, 0xD78A48FF, 0xF5B189FF, 0x995122FF, 0x563010FF};
+const unsigned int eyecol[6] = {0x000000FF, 0x778887FF, 0x7E6355FF, 0x888940FF, 0x6A84D0FF, 0x409B5AFF};
+const unsigned int lipcol[3] = {0xC76C46FF, 0xE44E3AFF, 0xD88789FF};
+const unsigned int glassescol[6] = {0x626D6CFF, 0x85703AFF, 0xAB4E37FF, 0x426996FF, 0xB97F27FF, 0xBDBFB9FF};
+const unsigned int eyebrows[24] = {1,3,14,15,11,10,0,6,8,4,13,12,2,19,16,18,22,9,21,5,17,7,20,23};
+const unsigned int eyes[48] = {2,6,0,42,1,24,29,36,3,16,45,13,17,26,46,9,8,5,33,14,11,20,44,18,30,21,7,10,34,41,31,32,15,12,19,23,27,28,38,4,22,25,39,43,37,40,35,47};
+const unsigned int noses[12] = {5,0,2,3,7,6,4,10,8,9,1,11};
+const unsigned int lips[24] = {6,1,14,16,17,5,10,12,7,13,8,19,23,11,22,18,9,15,21,2,20,3,4,0};
+// ***************************************************************
 static GRRLIB_texImg* img_heads;
 static GRRLIB_texImg* img_hairs1;
 static GRRLIB_texImg* img_hairs2;
@@ -32,88 +48,80 @@ static GRRLIB_texImg* img_mole;
 static GRRLIB_texImg* img_beards;
 static GRRLIB_texImg* img_mustache;
 static GRRLIB_texImg* img_glasses;
-GRRLIB_texImg* img_staticmii[100];
+static GRRLIB_ttfFont* mii_name_font;
 
-// ************************ DEFINE OUR ARRAYS ********************
-unsigned int hairbg[72] = {56,56,56,56,56,56,56,56,56,56,56,56,16,56,56,56,56,56,17,18,56,19,20,56,56,56,21,56,56,56,56,56,56,56,56,56,22,23,56,56,24,25,56,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,56,56,48,49,50,51,52,53,56};
-unsigned int hairfg[72] = {59,42,65,49,40,44,52,47,45,63,51,54,36,37,48,70,61,56,64,43,53,58,50,27,69,41,39,46,66,71,33,11,12,0,35,57,30,14,25,4,1,31,26,24,3,6,62,13,15,7,19,2,17,67,29,20,9,34,18,8,22,60,23,55,21,32,16,28,10,38,5,68};
-unsigned int haircol[8] = {0x111111FF, 0x332222FF, 0x441111FF, 0xBB6644FF, 0x8888AAFF, 0x443322FF, 0x996644FF, 0xDDBB99FF};
-unsigned int skincol[6] = {0xECCFBDFF, 0xF7BC7dFF, 0xD78A48FF, 0xF5B189FF, 0x995122FF, 0x563010FF};
-unsigned int eyecol[6] = {0x000000FF, 0x778887FF, 0x7E6355FF, 0x888940FF, 0x6A84D0FF, 0x409B5AFF};
-unsigned int lipcol[3] = {0xC76C46FF, 0xE44E3AFF, 0xD88789FF};
-unsigned int glassescol[6] = {0x626D6CFF, 0x85703AFF, 0xAB4E37FF, 0x426996FF, 0xB97F27FF, 0xBDBFB9FF};
-unsigned int eyebrows[24] = {1,3,14,15,11,10,0,6,8,4,13,12,2,19,16,18,22,9,21,5,17,7,20,23};
-unsigned int eyes[48] = {2,6,0,42,1,24,29,36,3,16,45,13,17,26,46,9,8,5,33,14,11,20,44,18,30,21,7,10,34,41,31,32,15,12,19,23,27,28,38,4,22,25,39,43,37,40,35,47};
-unsigned int noses[12] = {5,0,2,3,7,6,4,10,8,9,1,11};
-unsigned int lips[24] = {6,1,14,16,17,5,10,12,7,13,8,19,23,11,22,18,9,15,21,2,20,3,4,0};
-// ***************************************************************
-
-// ************** DEFINE SOME VARIABLES FOR PROG USE *************
-int feature=0;
-int blink[MAX_MIIS];				// this and the other blink variables are stored in arrays
-int blinkrand[MAX_MIIS];			// so that each mii has its own random blink. This allows
-int blinkcount[MAX_MIIS];		// for multiple miis to be drawn on the screen at the same
-int startblink[MAX_MIIS];		// time and not all blink in unison (which would be weird)
-
-int neck=0;					// figures out what type of head is used and allows for a
-int bodyadjust[MAX_MIIS];		// bodyadjustment variable to draw the body in the right spot
-
-char miinames[MAX_MIIS][11];		// stores the names in an array for easy list in the menu (or anywhere else you want)
-// ***************************************************************
-
-
-
-int MakeMiiHappy(int bodypart) {
-	if(bodypart==1) {									// 1 = mouth
-		int miipart[8] = {3, 4, 5, 8, 14, 16, 19, 23};		// Array of tiles I think are happy mouths
-		return(miipart[rand() % 8]);						// Randomly return one of the tiles
-	}
-	else if(bodypart==2) {								// 2 = eyes
-		int miipart=0;										// Most eyes are happy, so just use 0 (which = default eyes)
-		return(miipart);
-	}
-	// etc, etc.
-	else return(0);
+void MiiImage::default_expression()
+{
+	this->mouth_override = 0;
+	this->eye_override = 0;
+	this->needs_updating = true;
 }
-int MakeMiiSad(int bodypart) {
-	if(bodypart==1) {									// 1 = mouth
-		int miipart[3] = {9, 22, 24};						// Array of tiles I think are sad mouths
-		return(miipart[rand() % 3]);						// Randomly return one of the tiles
-	}
-	else if(bodypart==2) {								// 2 = eyes
-		int miipart[3]={6, 33, 39};						// Array of tiles I think are sad eyes
-		return(miipart[rand() % 3]);						// Randomly return one of the tiles
-	}
-	// etc, etc.
-	else return(0);
+
+void MiiImage::make_happy()
+{
+    int happy_mouths[8] = {3, 4, 5, 8, 14, 16, 19, 23};
+	this->mouth_override = (happy_mouths[rand() % 8]);
+	this->eye_override = 0;
+	this->needs_updating = true;
 }
-int MakeMiiShocked(int bodypart) {
-	if(bodypart==1) {									// 1 = mouth
-		int miipart[2] = {15, 11};							// Array of tiles I think are shocked mouths
-		return (miipart[rand() % 2]);						// Randomly return one of the tiles
-	}
-	else if(bodypart==2) {								// 2 = eyes
-		int miipart[5] = {10, 13, 36, 37, 43};				// Array of tiles I think are shocked eyes
-		return(miipart[rand() % 5]);						// Randomly return one of the tiles
-	}
-	// etc, etc.
-	else return(0);
+
+void MiiImage::make_sad() {
+	int sad_mouths[3] = {9, 22, 24};
+	this->mouth_override = (sad_mouths[rand() % 3]);
+	int sad_eyes[3]={6, 33, 39};
+	this->eye_override = (sad_eyes[rand() % 3]);
+	this->needs_updating = true;
 }
-int MakeMiiMad(int bodypart) {
-	if(bodypart==1) {									// 1 = mouth
-		int miipart[3] = {1, 21, 24};						// Array of tiles I think are mad mouths
-		return (miipart[rand() % 3]);						// Randomly return one of the tiles
-	}
-	else if(bodypart==2) {								// 2 = eyes
-		int miipart[2] = {44, 44};							// Array of tiles I think are mad eyes
-		return(miipart[rand() % 2]);						// Randomly return one of the tiles
-	}
-	// etc, etc.
-	else return(0);
+
+void MiiImage::make_shocked() {
+	int shocked_mouths[2] = {15, 11};
+	this->mouth_override = (shocked_mouths[rand() % 2]);
+	int shocked_eyes[5] = {10, 13, 36, 37, 43};
+	this->eye_override = (shocked_eyes[rand() % 5]);
+	this->needs_updating = true;
 }
-void GRRLIB_MiisInit() { // INITIALIZE THE MIIS!!!
-	
-	img_heads = GRRLIB_LoadTexture(mii_heads_png);
+
+void MiiImage::make_mad() {
+	int mad_mouths[3] = {1, 21, 24};
+	this->mouth_override = (mad_mouths[rand() % 3]);
+	int mad_eyes[2] = {44, 44};
+	this->eye_override = (mad_eyes[rand() % 2]);
+	this->needs_updating = true;
+}
+
+void MiiImage::set_character(Character new_character)
+{
+	if (this->character != new_character) {
+		this->character = new_character;
+		this->needs_updating = true;
+	}
+}
+
+void MiiImage::set_location(f32 x, f32 y)
+{
+	this->pos_x = x;
+	this->pos_y = y;
+}
+
+void MiiImage::set_blinking_enabled(bool enable)
+{
+	this->blink_enabled = enable;
+}
+
+void MiiImage::set_bobbing_enabled(bool enable)
+{
+	this->bobbing_enabled = enable;
+}
+
+void MiiImage::set_name_card_enabled(bool enable)
+{
+	this->show_name_card = enable;
+}
+
+// Initialize tilesets used for rending Miis
+void MiiImage::initialize(GRRLIB_ttfFont* font)
+{
+    img_heads = GRRLIB_LoadTexture(mii_heads_png);
 	img_hairs1 = GRRLIB_LoadTexture(mii_hairs1_png);
 	img_hairs2 = GRRLIB_LoadTexture(mii_hairs2_png);
 	img_eyebrows = GRRLIB_LoadTexture(mii_eyebrows_png);
@@ -127,6 +135,8 @@ void GRRLIB_MiisInit() { // INITIALIZE THE MIIS!!!
 	img_beards = GRRLIB_LoadTexture(mii_beards_png);
 	img_mustache = GRRLIB_LoadTexture(mii_mustache_png);
 	img_glasses = GRRLIB_LoadTexture(mii_glasses_png);
+
+	mii_name_font = font;
 	
 	GRRLIB_InitTileSet(img_heads, 120, 120, 0);
 	GRRLIB_InitTileSet(img_hairs1, 120, 120, 0);
@@ -141,39 +151,40 @@ void GRRLIB_MiisInit() { // INITIALIZE THE MIIS!!!
 	GRRLIB_InitTileSet(img_beards, 120, 140, 0);
 	GRRLIB_InitTileSet(img_mustache, 60, 60, 0);
 	GRRLIB_InitTileSet(img_glasses, 180, 72, 0);
-}	
+}
 
-
-void GRRLIB_BuildMii(Mii mii, int miiid, int miiblinks, int miieyes, int miimouth, GRRLIB_texImg* tex) { // The heart and sole, builds up our mii with requested blink, eye, and mouth settings. 0s will build the Mii unaltered)
+void MiiImage::composite() { // The heart and sole, builds up our mii with requested blink, eye, and mouth settings. 0s will build the Mii unaltered)
+	
+	if (!this->needs_updating)
+		return;
 	
 	GRRLIB_CompoStart();
+
+	const Mii& mii = default_miis[this->character];
 
 	GRRLIB_SetHandle(img_hairs1, 60,0);
 	GRRLIB_SetHandle(img_hairs2, 60,0);
 	GRRLIB_DrawTile(230, 210, img_hairs2, 0, -1*(2*mii.hairPart-1), 1, haircol[mii.hairColor], hairbg[hairfg[mii.hairType]]);
 	GRRLIB_DrawTile(230, 200, img_heads, 0, 1, 1, skincol[mii.skinColor], mii.faceShape);
 	
-	if(mii.faceShape==0) neck=2;
-	else if(mii.faceShape==1) neck=0;
-	else if(mii.faceShape==2) neck=8;
-	else if(mii.faceShape==3) neck=5;
-	else if(mii.faceShape==4) neck=1;
-	else if(mii.faceShape==5) neck=1;
-	else if(mii.faceShape==6) neck=9;
-	else if(mii.faceShape==7) neck=10;
+	int feature = 39;
 	
-	if(mii.facialFeature==0) feature=39;
-	else if(mii.facialFeature==1) feature=mii.faceShape;
-	else if(mii.facialFeature==2) feature=mii.faceShape;
-	else if(mii.facialFeature==3) feature=33;
-	else if(mii.facialFeature==4) feature=34;
-	else if(mii.facialFeature==5) feature=35;
-	else if(mii.facialFeature==6) feature=36;
-	else if(mii.facialFeature==7) feature=40+mii.faceShape;
-	else if(mii.facialFeature==8) feature=38;
-	else if(mii.facialFeature==9) feature=8+mii.faceShape;
-	else if(mii.facialFeature==10) feature=16+mii.faceShape;
-	else if(mii.facialFeature==11) feature=24+mii.faceShape;
+	switch (mii.facialFeature)
+	{
+		case 0 : feature = 39; break;
+		case 1 : feature = mii.faceShape; break;
+		case 2 : feature = mii.faceShape; break;
+		case 3 : feature = 33; break;
+		case 4 : feature = 34; break;
+		case 5 : feature = 35; break;
+		case 6 : feature = 36; break;
+		case 7 : feature = 40 + mii.faceShape; break;
+		case 8 : feature = 38; break;
+		case 9 : feature = 8 + mii.faceShape; break;
+		case 10: feature = 16 + mii.faceShape; break;
+		case 11: feature = 24 + mii.faceShape; break;
+		default: break;
+	}
 	
 	if(mii.facialFeature==2) {
 		GRRLIB_DrawTile(230, 200, img_features, 0, 1, 1, skincol[mii.skinColor], 32);
@@ -186,19 +197,7 @@ void GRRLIB_BuildMii(Mii mii, int miiid, int miiblinks, int miieyes, int miimout
 	GRRLIB_SetHandle(img_mole, 6, 6);
 	if(mii.mole==1) GRRLIB_DrawImg(252+(4*mii.moleHorizPos), 212+(2.8*mii.moleVertPos), img_mole, 0, .2+(mii.moleSize*0.1), .2+(mii.moleSize*0.1), 0xFFFFFFFF);
 	
-	// ********** RANDOM BLINKER ************
-	blink[miiid]++;
-	if(blink[miiid]>300+100*blinkrand[miiid]) startblink[miiid]=1;
-	if(startblink[miiid]==1) blinkcount[miiid]++;
-	if(blinkcount[miiid]>11) {
-		blinkrand[miiid]=rand() % 8;
-		blink[miiid]=0;
-		startblink[miiid]=0;
-		blinkcount[miiid]=0;
-	}
-	// **************************************
-	
-	if(blinkcount[miiid]<11 && blinkcount[miiid]>1 && miiblinks==1) { //if blinking (and time is right for a blink) display closed eye
+	if(this->blinking) { //if blinking display closed eye
 		GRRLIB_SetHandle(img_eyes1, 18,36);
 		GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes1, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, 46); 
 		GRRLIB_SetHandle(img_eyes2, 18,36);
@@ -213,7 +212,7 @@ void GRRLIB_BuildMii(Mii mii, int miiid, int miiblinks, int miieyes, int miimout
 		GRRLIB_DrawTile(254-(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes3, -11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, 95-46);
 	}
 	else { // display open eye
-		if(miieyes==0) { // if miieyes is 0 draw default open eye.
+		if(eye_override==0) { // if eye_override is 0 draw default open eye.
 			GRRLIB_SetHandle(img_eyes1, 18,36);
 			GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes1, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, eyes[mii.eyeType]); 
 			GRRLIB_SetHandle(img_eyes2, 18,36);
@@ -229,17 +228,17 @@ void GRRLIB_BuildMii(Mii mii, int miiid, int miiblinks, int miieyes, int miimout
 		}
 		else { // draw custom open eye.
 			GRRLIB_SetHandle(img_eyes1, 18,36);
-			GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes1, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, miieyes-1); 
+			GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes1, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, eye_override-1); 
 			GRRLIB_SetHandle(img_eyes2, 18,36);
-			GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes2, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), eyecol[mii.eyeColor], miieyes-1); 
+			GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes2, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), eyecol[mii.eyeColor], eye_override-1); 
 			GRRLIB_SetHandle(img_eyes3, 18,36);
-			GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes3, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, miieyes-1); 
+			GRRLIB_DrawTile(272+(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes3, 11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, eye_override-1); 
 			GRRLIB_SetHandle(img_eyes1, 36,36);
-			GRRLIB_DrawTile(254-(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes1, -11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, 95-(miieyes-1)); 
+			GRRLIB_DrawTile(254-(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes1, -11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, 95-(eye_override-1)); 
 			GRRLIB_SetHandle(img_eyes2, 36,36);
-			GRRLIB_DrawTile(254-(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes2, -11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), eyecol[mii.eyeColor], 95-(miieyes-1)); 
+			GRRLIB_DrawTile(254-(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes2, -11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), eyecol[mii.eyeColor], 95-(eye_override-1)); 
 			GRRLIB_SetHandle(img_eyes3, 36,36);
-			GRRLIB_DrawTile(254-(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes3, -11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, 95-(miieyes-1));
+			GRRLIB_DrawTile(254-(2.6*mii.eyeHorizSpacing), 184+(2.8*(mii.eyeVertPos)), img_eyes3, -11.25 * (7-mii.eyeRotation), .3+(mii.eyeSize*0.1), .3+(mii.eyeSize*0.1), 0xFFFFFFFF, 95-(eye_override-1));
 		}
 	}
 	
@@ -249,7 +248,7 @@ void GRRLIB_BuildMii(Mii mii, int miiid, int miiblinks, int miieyes, int miimout
 	GRRLIB_DrawTile(256-(2.6*mii.eyebrowHorizSpacing), 166+(2.8*(mii.eyebrowVertPos-3)), img_eyebrows, -11.25 * (11-mii.eyebrowRotation), .3+(mii.eyebrowSize*0.1), .3+(mii.eyebrowSize*0.1), haircol[mii.eyebrowColor], 53-eyebrows[mii.eyebrowType]);
 	
 	GRRLIB_SetHandle(img_lips, 30, 30);
-	if(miimouth==0) {
+	if(mouth_override==0) {
 		if(lips[mii.lipType]==1 || lips[mii.lipType]==6 || lips[mii.lipType]==11 || lips[mii.lipType]==17 || lips[mii.lipType]==19) {
 			GRRLIB_DrawTile(260, 220+(2.6*mii.lipVertPos), img_lips, 0, .2+(mii.lipSize*0.1), .2+(mii.lipSize*0.1), lipcol[mii.lipColor], lips[mii.lipType]);
 		}
@@ -258,11 +257,11 @@ void GRRLIB_BuildMii(Mii mii, int miiid, int miiblinks, int miieyes, int miimout
 		}
 	}
 	else {
-		if(miimouth-1==1 || miimouth-1==6 || miimouth-1==11 || miimouth-1==17 || miimouth-1==19) {
-			GRRLIB_DrawTile(260, 220+(2.6*mii.lipVertPos), img_lips, 0, .2+(mii.lipSize*0.1), .2+(mii.lipSize*0.1), 0xC76C46FF, miimouth-1);
+		if(mouth_override-1==1 || mouth_override-1==6 || mouth_override-1==11 || mouth_override-1==17 || mouth_override-1==19) {
+			GRRLIB_DrawTile(260, 220+(2.6*mii.lipVertPos), img_lips, 0, .2+(mii.lipSize*0.1), .2+(mii.lipSize*0.1), 0xC76C46FF, mouth_override-1);
 		}
 		else {
-			GRRLIB_DrawTile(260, 220+(2.6*mii.lipVertPos), img_lips, 0, .2+(mii.lipSize*0.1), .2+(mii.lipSize*0.1), 0XFFFFFFFF, miimouth-1);
+			GRRLIB_DrawTile(260, 220+(2.6*mii.lipVertPos), img_lips, 0, .2+(mii.lipSize*0.1), .2+(mii.lipSize*0.1), 0XFFFFFFFF, mouth_override-1);
 		}
 	}
 	
@@ -289,15 +288,67 @@ void GRRLIB_BuildMii(Mii mii, int miiid, int miiblinks, int miieyes, int miimout
 			GRRLIB_DrawTile(200, 195+(2.6*(mii.glassesVertPos)), img_glasses, 0, .1+(mii.glassesSize*0.1), .1+(mii.glassesSize*0.1), 0xFFFFFFFF, mii.glassesType-1);
 		}
 	}
-	GRRLIB_CompoEnd(200, 160, tex);		// finish the composition and store it as whatever texture was passed to GRRLIB_Build Mii
-	strcpy(miinames[miiid], mii.name);
-	bodyadjust[miiid] = neck;
+	GRRLIB_CompoEnd(200, 160, this->texture);		// finish the composition and store it as whatever texture was passed to GRRLIB_Build Mii
+	this->needs_updating = false;
 }
 
-void GRRLIB_CreateStaticMiis() {		// Create up to 100 empty textures and store each static mii into them.
-	u8 i;
-	for(i=0; i<MAX_MIIS; i++) {
-		img_staticmii[i] = GRRLIB_CreateEmptyTexture(180, 200);
-		GRRLIB_BuildMii(miis[i], i, 0, 0, 0, img_staticmii[i]);
+void MiiImage::render()
+{
+	GRRLIB_Circle(this->pos_x, this->pos_y, 65, 0xFFFFFFFF, true);
+    GRRLIB_Circle(this->pos_x, this->pos_y, 60, 0xFFFFFFFF, true);
+
+	if (this->show_name_card) {
+		float top_left_x = this->pos_x - 65;
+		float top_left_y = this->pos_y + 65 + 5;
+		float width = 65 * 2;
+		float height = 40;
+		float radius = 10;
+		// Full height, less width
+		GRRLIB_Rectangle(top_left_x + radius, top_left_y, width - 2 * radius, height, 0xFFFFFFFF, true);
+		// Full width, less height
+		GRRLIB_Rectangle(top_left_x, top_left_y + radius, width, height - 2 * radius, 0xFFFFFFFF, true);
+		GRRLIB_Circle(top_left_x + radius, top_left_y + radius, radius, 0xFFFFFFFF, true);
+		GRRLIB_Circle(top_left_x + width - radius, top_left_y + radius, radius, 0xFFFFFFFF, true);
+		GRRLIB_Circle(top_left_x + radius, top_left_y + height - radius, radius, 0xFFFFFFFF, true);
+		GRRLIB_Circle(top_left_x + width - radius, top_left_y + height - radius, radius, 0xFFFFFFFF, true);
+
+		char name[] = "bilbo";
+		int text_start_x = top_left_x - 2 + width / 2 - (sizeof(name) - 1) * 6;
+		GRRLIB_PrintfTTF(text_start_x, (int) top_left_y + 8, mii_name_font, name, 20, 0x000000FF);
 	}
+
+	float mii_position_x = this->pos_x;
+	float mii_position_y = this->pos_y;
+
+	if (this->bobbing_enabled) {
+		this->bobbing_param += this->bobbing_param_inc;
+		mii_position_x += 5 * cos(this->bobbing_param);
+		mii_position_y += 2 * sin(2*this->bobbing_param);
+	}
+
+    GRRLIB_DrawImg(mii_position_x, mii_position_y+5, this->texture, 0, 1, 1, 0xFFFFFFFF);
+}
+
+MiiImage::MiiImage(Character character, f32 pos_x, f32 pos_y)
+{
+	this->character = character;
+	this->pos_x = pos_x;
+	this->pos_y = pos_y;
+	this->eye_override = 0;
+	this->mouth_override = 0;
+	this->blink_enabled = false;
+	this->blink_timer = 0;
+	this->blinking = false;
+	this->bobbing_enabled = false;
+	this->texture = GRRLIB_CreateEmptyTexture(180, 200);
+	this->bobbing_param = (rand() % 6280) % 1000;
+	this->bobbing_param_inc = 0.05; //((rand() % 30) + 30) / 1000.0f;
+	GRRLIB_SetMidHandle(this->texture, true);
+
+	this->needs_updating = true;
+}
+
+MiiImage::~MiiImage()
+{
+	GRRLIB_FreeTexture(this->texture);
 }
