@@ -26,6 +26,7 @@ pub struct GenericResponse {
 
 #[catch(default)]
 pub fn default_catcher(status: Status, _request: &Request) -> Json<GenericResponse>{
+    println!("{:?}", _request);
     Json(GenericResponse { success: false, reason: Some(format!("Error code {}", status.code))})
 }
 

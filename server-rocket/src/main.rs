@@ -4,6 +4,7 @@ mod gamestate;
 mod uuid;
 mod shirt;
 
+use rocket::fs::{FileServer, relative};
 use std::collections::{HashMap, VecDeque};
 
 use routes::*;
@@ -30,11 +31,12 @@ fn rocket() -> _ {
         .manage(CurrentMatchup::new(Matchup::new()))
         .manage(CurrentShirtBracket::new(VecDeque::new()))
         .manage(FinalRoundShirts::new(Vec::new()))
+        .mount("/", FileServer::from(relative!("static")))
         .mount("/", 
             routes![
                 post_join,
                 get_game_state, post_game_state, get_game_start, post_game_start,
-                get_players, post_players_character, post_players_quote,
+                get_players, post_players_character, post_players_quote, post_players_emotion,
                 get_draw, get_draw_submissions, post_draw,
                 get_write, get_write_submissions, post_write,
                 get_shirt, get_shirt_options, get_shirt_submissions, post_shirt,

@@ -4,7 +4,7 @@ use rand::{seq::SliceRandom, thread_rng};
 use rocket::{serde::{json::Json, Serialize, Deserialize}, State};
 use uuid::Uuid;
 
-use crate::{player::{PlayerList, Wii}, gamestate::{self, SharedGameState, Started, GameState}, uuid::ClientUuid, shirt::{CurrentRoundDrawings, CurrentRoundQuotes, FinalizedDrawings, FinalizedQuotes, CurrentRoundShirtOptions, ShirtOptions, CurrentRoundShirts, CurrentShirtBracket, FinalRoundShirts}};
+use crate::{player::{PlayerList, Wii}, gamestate::{self, SharedGameState, Started, GameState}, uuid::ClientUuid, shirt::{CurrentRoundDrawings, CurrentRoundQuotes, FinalizedDrawings, FinalizedQuotes, CurrentRoundShirtOptions, ShirtOptions, CurrentRoundShirts, CurrentShirtBracket, FinalRoundShirts, CurrentMatchup}};
 
 use super::GenericResponse;
 
@@ -57,6 +57,7 @@ pub async fn post_game_state(
     shirt_options: &State<CurrentRoundShirtOptions>,
     current_shirts: &State<CurrentRoundShirts>,
     current_bracket: &State<CurrentShirtBracket>,
+    current_matchup: &State<CurrentMatchup>,
     final_shirts: &State<FinalRoundShirts>
 ) -> Json<GenericResponse> {
     if *wii.read().await != uuid.into() {
@@ -68,6 +69,8 @@ pub async fn post_game_state(
 
     // Update the state
     let state_transition = current_state.write().await.set_state(new_state.state);
+
+    println!("Wii set state to {:?}\n\n", current_state.read().await.get_state());
 
     // Check if the current state is different from the previous state (ignoring transistions to Wait)
     if state_transition {
@@ -87,8 +90,9 @@ pub async fn post_game_state(
                 final_shirts.write().await.clear();
             },
             GameState::Shirt => {
-                // Clear previous round shirt options
+                // Clear previous round shirts and shirt options
                 shirt_options.write().await.clear();
+                current_shirts.write().await.clear();
 
                 // Finalize all shirts and quotes from the current round
                 for drawing in current_drawings.write().await.drain(..) {
@@ -145,7 +149,11 @@ pub async fn post_game_state(
                 }
             },
             GameState::Battle => {
-                
+                let mut locked_current_matchup = current_matchup.write().await;
+                locked_current_matchup.shirt0 = None;
+                locked_current_matchup.shirt1 = None;
+                locked_current_matchup.votes.clear();
+
                 let mut locked_bracket = current_bracket.write().await;
 
                 // clear the old bracket
@@ -159,8 +167,14 @@ pub async fn post_game_state(
                 // Shuffle the shirt order to create the tournament
                 let mut rng = thread_rng();
                 locked_bracket.make_contiguous().shuffle(&mut rng);
+
             },
             GameState::FinalBattle => {
+                let mut locked_current_matchup = current_matchup.write().await;
+                locked_current_matchup.shirt0 = None;
+                locked_current_matchup.shirt1 = None;
+                locked_current_matchup.votes.clear();
+
                 // Move the final battle shirts into the battle shirts and shuffle
                 let mut locked_current_round_shirts = current_shirts.write().await;
                 locked_current_round_shirts.clear();

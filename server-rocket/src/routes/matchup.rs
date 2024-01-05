@@ -55,6 +55,10 @@ pub async fn get_matchup(
         });
     }
 
+    if *wii.read().await == parsed_client_uuid {
+        println!("WII REQUESTED MATCHUP!!\n\n\n");
+    }
+
     let locked_shirt0 = &current_matchup.read().await.shirt0;
     let locked_shirt1 = &current_matchup.read().await.shirt1;
 
@@ -131,17 +135,16 @@ pub async fn post_matchup(
             let shirt0_votes = votes.get(s0).unwrap_or(&0);
             let shirt1_votes = votes.get(s1).unwrap_or(&0);
 
+            let winner;
             if shirt0_votes > shirt1_votes {
-                current_bracket.write().await.push_back(s0.clone());
-                prev_winner = Some(s0.clone());
+                winner = s0.clone();
             } else if shirt1_votes > shirt0_votes {
-                current_bracket.write().await.push_back(s1.clone());
-                prev_winner = Some(s1.clone());
+                winner = s1.clone();
             } else {
-                let winner = s0.clone();
-                current_bracket.write().await.push_back(winner);
-                prev_winner = Some(winner);
+                winner = s0.clone();
             }
+            current_bracket.write().await.push_back(winner.clone());
+            prev_winner = Some(winner);
         }
         _ => {
             println!("At least one shirt in matchup doesn't exist!");
@@ -161,13 +164,11 @@ pub async fn post_matchup(
     println!("Length of bracket deque: {}", current_bracket.read().await.len());
 
     // put next two images from bracket into matchup
-    if current_bracket.read().await.len() >= 2 {
-        println!("Putting next two shirts into matchup");
-        locked_matchup.shirt0 = current_bracket.write().await.pop_front();
-        locked_matchup.shirt1 = current_bracket.write().await.pop_front();
-    }
+    println!("Putting next two shirts into matchup");
+    locked_matchup.shirt0 = current_bracket.write().await.pop_front();
+    locked_matchup.shirt1 = current_bracket.write().await.pop_front();
 
-    println!("New matchup: {:?}", *locked_matchup);
+    // println!("New matchup: {:?}", *locked_matchup);
 
     // if bracket is empty, set final_matchup to true
     let final_matchup = current_bracket.read().await.is_empty();

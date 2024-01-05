@@ -100,17 +100,18 @@ pub async fn post_shirt(
     }
 
     // Make sure player has not already submitted a shirt
-    let already_submitted = shirts.read()
-        .await.iter()
-        .find_map(|(_, shirt)| if shirt.creator == Some(parsed_uuid) {Some(())} else {None})
-        .is_some();
+    // Actually don't, as a band aid fix for storing multiple round's shirts in the same shirt array
+    // let already_submitted = shirts.read()
+    //     .await.iter()
+    //     .find_map(|(_, shirt)| if shirt.creator == Some(parsed_uuid) {Some(())} else {None})
+    //     .is_some();
 
-    if already_submitted {
-        return Json(GenericResponse { 
-            success: false, 
-            reason: Some(String::from_str("You already submitted a shirt!").unwrap()), 
-        });
-    }
+    // if already_submitted {
+    //     return Json(GenericResponse { 
+    //         success: false, 
+    //         reason: Some(String::from_str("You already submitted a shirt!").unwrap()), 
+    //     });
+    // }
 
     // Add shirt
     let chosen_drawing = drawings.write().await.remove(&new_shirt.drawing).unwrap();
@@ -159,7 +160,7 @@ pub async fn get_shirt_submissions(client_uuid: ClientUuid, wii: &State<Wii>, sh
     });
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(crate = "rocket::serde")]
 pub struct GetShirtResponse {
     success: bool,
@@ -180,6 +181,10 @@ pub async fn get_shirt(id: ClientUuid, client_uuid: ClientUuid, wii: &State<Wii>
         });
     }
 
+    if *wii.read().await == parsed_client_uuid {
+        println!("WII REQUESTED SHIRT!!\n\n");
+    }
+
     let parsed_shirt_uuid: Uuid = id.into();
     match shirts.read().await.get(&parsed_shirt_uuid) {
         Some(shirt) => {
@@ -190,11 +195,17 @@ pub async fn get_shirt(id: ClientUuid, client_uuid: ClientUuid, wii: &State<Wii>
                 shirt_to_return = shirt.strip_creator();
             }
 
-            return Json(GetShirtResponse { 
+            let resp = Json(GetShirtResponse { 
                 success: true, 
                 reason: None, 
                 shirt: Some(shirt_to_return)
-            })
+            });
+
+            if *wii.read().await == parsed_client_uuid {
+                println!("WII REQUESTED SHIRT!!\n\n{:?}\n", resp);
+            }
+
+            return resp;
         },
         None => {
             return Json(GetShirtResponse { 

@@ -29,6 +29,17 @@ pub enum Character {
     Dad
 }
 
+#[derive(Serialize_repr, Deserialize_repr, Clone, Copy, FromRepr, EnumCount, Debug)]
+#[serde(crate = "rocket::serde")]
+#[repr(u8)]
+pub enum Emotion {
+    Default = 0,
+    Happy,
+    Sad,
+    Angry,
+    Shocked
+}
+
 impl Character {
     pub fn random() -> Character {
         let mut rng = thread_rng();
@@ -42,12 +53,13 @@ pub struct Player {
     pub name: String,
     pub character: Character,
     pub victory_quote: String,
+    pub emotion: Emotion,
     pub admin: bool
 }
 
 impl Player {
-    pub fn new(name: &str, admin: bool) -> Player {
-        Player { name: name.to_owned(), character: Character::random(), victory_quote: String::new(), admin}
+    pub fn new(name: String, admin: bool) -> Player {
+        Player { name, character: Character::random(), victory_quote: String::new(), emotion: Emotion::Default, admin}
     }
 }
 

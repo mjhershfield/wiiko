@@ -2,7 +2,7 @@ use std::str::FromStr;
 use rocket::{serde::{Deserialize, json::Json, Serialize}, State};
 use uuid::Uuid;
 
-use crate::player::{PlayerList, Player, Character};
+use crate::{player::{PlayerList, Player, Character}, gamestate::{SharedGameState, GameState}};
 
 #[derive(Deserialize)]
 #[serde(crate = "rocket::serde")]
@@ -21,7 +21,17 @@ pub struct JoinResponse {
 }
 
 #[post("/join", data = "<new_player>")]
-pub async fn post_join<'a>(new_player: Json<JoinRequest<'_>>, player_list: &State<PlayerList>) -> Json<JoinResponse> {
+pub async fn post_join<'a>(new_player: Json<JoinRequest<'_>>, current_state: &State<SharedGameState>, player_list: &State<PlayerList>) -> Json<JoinResponse> {
+
+    if *current_state.read().await != GameState::Lobby {
+        return Json(JoinResponse { 
+            success: false, 
+            reason: Some(String::from_str("Game is in progress").unwrap()), 
+            uuid: None,
+            character: None,
+            admin: None
+        });
+    }
 
     // Make sure there are no players that have the same name
     for player in player_list.read().await.iter() {
@@ -36,8 +46,29 @@ pub async fn post_join<'a>(new_player: Json<JoinRequest<'_>>, player_list: &Stat
         }
     }
 
+    if !new_player.username.is_ascii() {
+        return Json(JoinResponse { 
+            success: false, 
+            reason: Some(String::from_str("Name cannot contain special characters!").unwrap()), 
+            uuid: None,
+            character: None,
+            admin: None
+        });
+    }
+
+    if new_player.username.chars().count() > 10 {
+        return Json(JoinResponse { 
+            success: false, 
+            reason: Some(String::from_str("Name cannot be longer than 10 characters!").unwrap()), 
+            uuid: None,
+            character: None,
+            admin: None
+        });
+    }
+
     // Add new player to players list
-    let new_player_obj = Player::new(new_player.username, player_list.read().await.is_empty());
+    let admin = false; //player_list.read().await.is_empty()
+    let new_player_obj = Player::new(new_player.username.to_ascii_uppercase(), admin);
     let new_player_uuid = Uuid::new_v4();
 
     let response = Json(JoinResponse { 
