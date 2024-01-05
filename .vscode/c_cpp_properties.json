@@ -14,7 +14,7 @@
             ],
             "compilerPath": "/opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc",
             "cStandard": "gnu99",
-            "cppStandard": "gnu++11",
+            "cppStandard": "gnu++20",
             "intelliSenseMode": "none-gcc-powerpc"
         }
     ],
