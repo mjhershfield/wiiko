@@ -4,8 +4,14 @@ meta {
   seq: 1
 }
 
-get {
+post {
   url: 127.0.0.1:8000/join
-  body: none
+  body: json
   auth: none
+}
+
+body:json {
+  {
+    "username": "MMMMMMMMMM"
+  }
 }

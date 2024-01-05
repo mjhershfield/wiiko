@@ -1,15 +1,21 @@
 meta {
-  name: Post Matchup
+  name: Get State
   type: http
-  seq: 11
+  seq: 3
 }
 
 post {
-  url: 127.0.0.1:8000/matchup
-  body: none
+  url: 127.0.0.1:8000/game/state
+  body: json
   auth: none
 }
 
 headers {
   x-client-uuid: 6b043b00-49d2-4832-be99-9d85b9cbe2cb
+}
+
+body:json {
+  {
+    "state": 5
+  }
 }
